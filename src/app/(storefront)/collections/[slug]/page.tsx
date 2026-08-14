@@ -85,11 +85,10 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
           <Image
             src={collection.image}
             alt={collection.name}
-            width={100}
-            height={100}
-            className="object-cover"
+            fill
             sizes="100vw"
             priority
+            className="object-cover"
           />
         ) : (
           <div className="absolute inset-0 bg-neutral-200" />
