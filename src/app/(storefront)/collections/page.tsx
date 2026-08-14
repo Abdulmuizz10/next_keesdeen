@@ -67,7 +67,9 @@ export default async function CollectionsIndexPage() {
                   alt={col.name}
                   width={100}
                   height={100}
+                  sizes="full"
                   fill
+                  priority
                   className="h-full w-full object-cover transition-transform duration-1000 ease-out-expo group-hover:scale-105"
                 />
               ) : (
