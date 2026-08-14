@@ -120,8 +120,6 @@ export default function CartPage() {
                         <Image
                           src={line.image}
                           alt={line.title}
-                          width={100}
-                          height={100}
                           fill
                           className="object-cover"
                           sizes="128px"
