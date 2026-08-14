@@ -128,7 +128,7 @@ export function SiteHeader() {
               alt="Brand logo"
               width={100}
               height={100}
-              className="w-[140px] h-auto lg:w-[160px] lg:h-8 xl:w-[180px] xl:h-10"
+              className="w-[130px] h-auto lg:w-[140px] lg:h-8"
               priority
             />
           </Link>

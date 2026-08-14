@@ -72,6 +72,7 @@ export function SiteFooter() {
                 alt="Brand logo"
                 width={100}
                 height={100}
+                className="w-[140px] h-auto lg:w-[160px] lg:h-8 xl:w-[180px] xl:h-10"
                 priority
               />
             </Link>
@@ -88,7 +89,7 @@ export function SiteFooter() {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-400 hover:text-white transition-colors duration-300 pb-0.5 border-b border-transparent hover:border-white/30"
+                  className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-300 hover:text-white transition-colors duration-300 pb-0.5 border-b border-transparent hover:border-white/30"
                 >
                   {label}
                 </Link>
@@ -106,7 +107,7 @@ export function SiteFooter() {
                 <li key={href}>
                   <Link
                     href={href}
-                    className="text-sm text-neutral-400 hover:text-white font-sans transition-colors duration-300"
+                    className="text-sm text-neutral-300 hover:text-white font-sans transition-colors duration-300"
                   >
                     {label}
                   </Link>
@@ -125,7 +126,7 @@ export function SiteFooter() {
                 <li key={href}>
                   <Link
                     href={href}
-                    className="text-sm text-neutral-400 hover:text-white font-sans transition-colors duration-300"
+                    className="text-sm text-neutral-300 hover:text-white font-sans transition-colors duration-300"
                   >
                     {label}
                   </Link>
@@ -162,7 +163,7 @@ export function SiteFooter() {
 
       {/* Bottom bar */}
       <div className="border-t border-white/10 px-6 sm:px-8 lg:px-12 py-5 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-500">
+        <p className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-200">
           © {new Date().getFullYear()} Keesdeen. All rights reserved.
         </p>
         <div className="flex gap-8">
@@ -170,7 +171,7 @@ export function SiteFooter() {
             <Link
               key={href}
               href={href}
-              className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-500 hover:text-white transition-colors duration-300"
+              className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-200 hover:text-white transition-colors duration-300"
             >
               {label}
             </Link>
