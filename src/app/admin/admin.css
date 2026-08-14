@@ -1,0 +1,75 @@
+/* shadcn/ui CSS variables — scoped to /admin layout only */
+:root {
+  --radius: 0.5rem;
+}
+
+/* ── LIGHT MODE ─────────────────────────────────────────────── */
+.admin-shell {
+  --background: 0 0% 98.5%;
+  --foreground: 0 0% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 9%;
+  --primary: 155 96% 37%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96.1%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96.1%;
+  --muted-foreground: 0 0% 45.1%;
+  --accent: 0 0% 96.1%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 91%;
+  --input: 0 0% 89.8%;
+  --ring: 155 96% 37%;
+  --sidebar-bg: 0 0% 100%;
+  --sidebar-fg: 0 0% 25%;
+  --sidebar-border: 0 0% 93%;
+  --sidebar-active: 155 50% 96%;
+  --sidebar-active-fg: 155 96% 32%;
+}
+
+/* ── DARK MODE ──────────────────────────────────────────────── */
+.admin-shell.dark {
+  --background: 220 13% 10%;
+  --foreground: 210 20% 94%;
+  --card: 220 13% 13%;
+  --card-foreground: 210 20% 94%;
+  --popover: 220 13% 13%;
+  --popover-foreground: 210 20% 94%;
+  --primary: 155 70% 45%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 220 13% 18%;
+  --secondary-foreground: 210 20% 94%;
+  --muted: 220 13% 18%;
+  --muted-foreground: 210 10% 55%;
+  --accent: 220 13% 18%;
+  --accent-foreground: 210 20% 94%;
+  --destructive: 0 62% 55%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 220 13% 20%;
+  --input: 220 13% 18%;
+  --ring: 155 70% 45%;
+  --sidebar-bg: 220 13% 12%;
+  --sidebar-fg: 210 15% 70%;
+  --sidebar-border: 220 13% 18%;
+  --sidebar-active: 155 30% 18%;
+  --sidebar-active-fg: 155 70% 55%;
+}
+
+/* Sidebar transitions */
+.admin-sidebar {
+  transition: width 200ms ease, transform 200ms ease;
+}
+.admin-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+.admin-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-sidebar::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 4px;
+}

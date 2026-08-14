@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", "EB Garamond", Georgia, serif;
+  --font-sans: "Manrope", system-ui, -apple-system, sans-serif;
+
+  --color-primary-50: #e6f8f1;
+  --color-primary-100: #98e3c4;
+  --color-primary-200: #6dd8ab;
+  --color-primary-300: #2fc787;
+  --color-primary-400: #04bb6e;
+  --color-primary-500: #03834d;
+  --color-primary-600: #027243;
+
+  --color-secondary-400: #da5b14;
+
+  --color-neutral-50: #f9f9f9;
+  --color-neutral-100: #f0f0f0;
+  --color-neutral-200: #e0e0e0;
+  --color-neutral-300: #ababab;
+  --color-neutral-400: #3c3c3c;
+  --color-neutral-500: #2a2a2a;
+  --color-neutral-600: #1a1a1a;
+
+  /* Spacing scale — generous luxury whitespace */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 2rem;
+  --space-lg: 4rem;
+  --space-xl: 6rem;
+  --space-2xl: 10rem;
+}
+
+/* ── Storefront global resets (admin is unaffected) ── */
+
+/* Hairline border utility */
+.sf-border {
+  border-color: rgba(60, 60, 60, 0.12);
+}
+
+.keesdeen-phone-input {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-neutral-200, #e5e5e5);
+  padding-bottom: 0;
+}
+
+.keesdeen-phone-input .PhoneInputCountry {
+  margin-right: 0.75rem;
+}
+
+.keesdeen-phone-input .PhoneInputCountrySelect {
+  border-radius: 0;
+}
+
+.keesdeen-phone-input .PhoneInputInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  padding: 0.75rem 0;
+  color: var(--color-neutral-600, #525252);
+  border-radius: 0;
+}
+
+.keesdeen-phone-input .PhoneInputInput:focus {
+  outline: none;
+}
+
+.keesdeen-phone-input.PhoneInput--focus {
+  border-bottom-color: var(--color-neutral-600, #525252);
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
