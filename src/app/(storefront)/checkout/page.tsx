@@ -23,6 +23,8 @@ export default async function CheckoutPage() {
         applicationId: getSquareApplicationId(),
         locationId: getSquareLocationId(),
         environment: getSquareEnvironment(),
+        countryCode: "GB",
+        currencyCode: "GBP",
       }
     : null;
 

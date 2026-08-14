@@ -741,12 +741,8 @@ export function CheckoutFlow({ user, squareConfig }: CheckoutFlowProps) {
          * e.g. 12.99, not 1299.
          */
         const paymentRequest = payments.paymentRequest({
-          // countryCode: squareConfig.countryCode,
-          // currencyCode: squareConfig.currencyCode,
-
-          countryCode: "GB",
-          currencyCode: "GBP",
-
+          countryCode: squareConfig.countryCode,
+          currencyCode: squareConfig.currencyCode,
           total: {
             amount: (grandTotalRef.current / 100).toFixed(2),
             label: "Keesdeen",
