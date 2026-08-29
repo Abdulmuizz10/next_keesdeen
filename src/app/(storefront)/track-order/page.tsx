@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,7 +50,7 @@ const STATUS_LABELS: Record<string, string> = {
   refunded: "Refunded",
 };
 
-export default function TrackOrderPage() {
+function TrackOrderContent() {
   const searchParams = useSearchParams();
 
   const [orderNumber, setOrderNumber] = useState(
@@ -165,7 +165,15 @@ export default function TrackOrderPage() {
   );
 }
 
-function OrderResult({
+export default function TrackOrderPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <TrackOrderContent />
+    </Suspense>
+  );
+}
+
+export default function OrderResult({
   result,
   onReset,
 }: {
