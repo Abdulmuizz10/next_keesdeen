@@ -49,6 +49,7 @@ export function SiteHeader() {
 
   const navLinks = [
     { label: "Shop", href: "/shop" },
+    { label: "Collections", href: "/collections" },
     { label: "Active Wears", href: "/category/active-wears" },
     { label: "Fitness Accessories", href: "/category/fitness-accessories" },
   ];
@@ -103,15 +104,17 @@ export function SiteHeader() {
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
             <nav className="hidden lg:flex items-center gap-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href + link.label}
-                  href={link.href}
-                  className={`text-[11px] font-sans font-medium uppercase tracking-widest transition-colors ${navLinkColor}`}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                return (
+                  <Link
+                    key={link.href + link.label}
+                    href={link.href}
+                    className={`${link.label === "Collections" && "hidden xl:block"} text-[11px] font-sans font-medium uppercase tracking-widest transition-colors ${navLinkColor}`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
 
@@ -128,6 +131,7 @@ export function SiteHeader() {
               alt="Brand logo"
               width={100}
               height={100}
+              // className="w-[140px] h-auto lg:w-[180px] lg:h-10"
               className="w-[130px] h-auto lg:w-[140px] lg:h-8"
               priority
             />
@@ -249,7 +253,7 @@ export function SiteHeader() {
             )}
 
             <Link
-              href={session?.user ? "/account/orders" : "/auth/login"}
+              href={session?.user ? "/account" : "/auth/login"}
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-center w-12 h-12 rounded-full border sf-border text-neutral-500 hover:text-neutral-600 hover:border-neutral-400 transition-colors"
               aria-label="Account"

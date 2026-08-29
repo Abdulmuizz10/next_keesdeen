@@ -218,7 +218,7 @@ export default async function CategoryPage({
 
       {/* Category Header */}
       <section className="bg-white border-b border-neutral-100">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+        <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
           <h1 className="font-serif text-4xl sm:text-5xl font-semibold text-neutral-600">
             {category.name}
           </h1>
@@ -231,7 +231,7 @@ export default async function CategoryPage({
       </section>
 
       {/* Filters + Products */}
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12 py-10 sm:py-14">
+      <section className="mx-auto max-w-[1400px] px-4 py-10 sm:py-14">
         <div className="lg:grid lg:grid-cols-4 lg:gap-8">
           {/* Sidebar Filters */}
           <aside className="lg:col-span-1 mb-8 lg:mb-0">

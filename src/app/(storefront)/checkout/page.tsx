@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import {
   getSquareApplicationId,
@@ -12,10 +11,6 @@ export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
   const session = await auth();
-
-  if (!session?.user) {
-    redirect("/auth/login?callbackUrl=/checkout");
-  }
 
   // Square configuration for client
   const squareConfig = isSquareConfigured()
@@ -31,11 +26,16 @@ export default async function CheckoutPage() {
   return (
     <main className="min-h-screen">
       <CheckoutFlow
-        user={{
-          id: session.user.id,
-          email: session.user.email,
-          name: session.user.name,
-        }}
+        user={
+          session?.user
+            ? {
+                id: session.user.id,
+                email: session.user.email,
+                name: session.user.name,
+                role: session.user.role,
+              }
+            : null
+        }
         squareConfig={squareConfig}
       />
     </main>

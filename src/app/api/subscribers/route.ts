@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Subscriber from "@/lib/models/Subscriber";
 import { z } from "zod";
+import { sendSubscriberWelcomeEmail } from "@/lib/email";
 
 const subscribeSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json(
         { error: "Invalid email address" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -70,12 +71,17 @@ export async function POST(request: NextRequest) {
       tags: ["new"],
     });
 
+    sendSubscriberWelcomeEmail({
+      email: data.email,
+      firstName: data.firstName,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Subscriber error:", error);
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -11,6 +11,7 @@ const shopLinks = [
 
 const supportLinks = [
   ["Contact Us", "/contact"],
+  ["Order Lookup", "/track-order"],
   ["Shipping & Returns", "/shipping-returns"],
   ["Privacy Policy", "/privacy"],
   ["Terms of Service", "/terms"],
@@ -46,7 +47,7 @@ export function SiteFooter() {
               {marqueeItems.map((text, j) => (
                 <span
                   key={j}
-                  className="mx-6 font-sans text-xs uppercase tracking-[0.14em] text-neutral-400"
+                  className="mx-6 font-sans text-xs uppercase tracking-[0.14em] text-neutral-300"
                 >
                   {text}
                   <span className="mx-6 text-neutral-600">—</span>
@@ -58,7 +59,7 @@ export function SiteFooter() {
       </div>
 
       {/* Content columns */}
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
+      <div className="mx-auto max-w-[1400px] px-4 py-20 sm:py-24">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
           {/* Brand */}
           <div>
@@ -72,11 +73,11 @@ export function SiteFooter() {
                 alt="Brand logo"
                 width={100}
                 height={100}
-                className="w-[140px] h-auto lg:w-[160px] lg:h-8 xl:w-[180px] xl:h-10"
+                className="w-[140px] h-auto lg:w-40 lg:h-8 xl:w-[180px] xl:h-10"
                 priority
               />
             </Link>
-            <p className="mt-4 text-sm text-neutral-300 font-sans leading-[1.7]">
+            <p className="mt-4 text-sm text-neutral-200 font-sans leading-[1.7]">
               Premium leather goods crafted with care. Designed to last a
               lifetime.
             </p>
@@ -99,7 +100,7 @@ export function SiteFooter() {
 
           {/* Shop */}
           <div>
-            <h3 className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-300 mb-5">
+            <h3 className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-200 mb-5">
               Inventory
             </h3>
             <ul className="space-y-3">
@@ -118,7 +119,7 @@ export function SiteFooter() {
 
           {/* Support */}
           <div>
-            <h3 className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-300 mb-5">
+            <h3 className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-200 mb-5">
               Support
             </h3>
             <ul className="space-y-3">
@@ -163,7 +164,7 @@ export function SiteFooter() {
 
       {/* Bottom bar */}
       <div className="border-t border-white/10 px-6 sm:px-8 lg:px-12 py-5 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-200">
+        <p className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-300">
           © {new Date().getFullYear()} Keesdeen. All rights reserved.
         </p>
         <div className="flex gap-8">
@@ -171,7 +172,7 @@ export function SiteFooter() {
             <Link
               key={href}
               href={href}
-              className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-200 hover:text-white transition-colors duration-300"
+              className="text-[10px] font-sans uppercase tracking-[0.12em] text-neutral-300 hover:text-white transition-colors duration-300"
             >
               {label}
             </Link>

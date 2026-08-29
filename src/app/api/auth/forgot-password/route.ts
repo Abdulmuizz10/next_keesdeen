@@ -5,7 +5,9 @@ import User from "@/lib/models/User";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendPasswordResetEmail } from "@/lib/email";
 
-const GENERIC_RESPONSE = { message: "If an account exists for this email, we've sent a reset link." };
+const GENERIC_RESPONSE = {
+  message: "If an account exists for this email, we've sent a reset link.",
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,12 +17,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate-limit by email to prevent spam / enumeration
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
     const rl = await checkRateLimit(`pwd-reset:${ip}`);
     if (!rl.success) {
       return NextResponse.json(
         { error: "Too many requests. Please wait a few minutes." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
@@ -35,7 +38,10 @@ export async function POST(request: NextRequest) {
 
     // Generate a cryptographically random token
     const rawToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     // Store only the hash + expiry — never the raw token

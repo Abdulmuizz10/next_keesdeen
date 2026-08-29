@@ -70,7 +70,7 @@ export function SearchResultsContent() {
     <main className="bg-white min-h-screen">
       {/* Header */}
       <section className="bg-white border-b border-neutral-100">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+        <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
           <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-neutral-600">
             {q ? <>Results for &ldquo;{q}&rdquo;</> : "Search"}
           </h1>
@@ -82,7 +82,7 @@ export function SearchResultsContent() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12 py-10 sm:py-14">
+      <section className="mx-auto max-w-[1400px] px-4 py-10 sm:py-14">
         {/* Sort Bar */}
         {products.length > 0 && (
           <div className="flex items-center justify-between mb-6">

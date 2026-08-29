@@ -54,7 +54,7 @@ export default function CartPage() {
   if (lines.length === 0) {
     return (
       <main className="min-h-screen">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+        <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
           <div className="flex flex-col items-center justify-center text-center py-20">
             <ShoppingBag size={64} className="text-neutral-200 mb-6" />
             <h1 className="font-serif text-3xl font-semibold text-neutral-600 mb-3">
@@ -81,7 +81,7 @@ export default function CartPage() {
     <main className="min-h-screen">
       {/* Header */}
       <section className="bg-white border-b border-neutral-100">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+        <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
           <div className="flex items-center justify-between">
             <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-neutral-600">
               Shopping Cart
@@ -93,7 +93,7 @@ export default function CartPage() {
         </div>
       </section>
 
-      <div className="bg-white mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-4">
+      <div className="bg-white mx-auto max-w-[1400px] px-4 py-4">
         <div className="lg:grid lg:grid-cols-3 lg:gap-8">
           {/* Cart Lines */}
           <div className="lg:col-span-2">
@@ -175,12 +175,12 @@ export default function CartPage() {
                                 line.quantity - 1,
                               )
                             }
-                            className="w-9 h-9 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 transition-colors"
+                            className="w-5 h-7 sm:w-9 sm:h-9 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 transition-colors"
                             aria-label="Decrease quantity"
                           >
                             <Minus size={16} />
                           </button>
-                          <span className="w-10 text-center text-sm font-medium text-neutral-600">
+                          <span className="w-5 sm:w-10 text-center text-xs sm:text-sm font-medium text-neutral-600">
                             {line.quantity}
                           </span>
                           <button
@@ -192,7 +192,7 @@ export default function CartPage() {
                               )
                             }
                             disabled={line.quantity >= line.stock}
-                            className="w-9 h-9 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 disabled:text-neutral-300 transition-colors"
+                            className="w-5 h-7 sm:w-9 sm:h-9 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 disabled:text-neutral-300 transition-colors"
                             aria-label="Increase quantity"
                           >
                             <Plus size={16} />

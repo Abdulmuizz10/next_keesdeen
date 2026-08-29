@@ -1,14 +1,15 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { CheckCircle } from "lucide-react";
+import { auth } from "@/lib/auth";
 import { OrderConfirmationContent } from "./OrderConfirmationContent";
 
-export default function OrderConfirmationPage() {
+export default async function OrderConfirmationPage() {
+  const session = await auth();
+
   return (
     <main className="min-h-screen py-16">
       <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
         <Suspense fallback={<OrderConfirmationSkeleton />}>
-          <OrderConfirmationContent />
+          <OrderConfirmationContent isGuest={!session?.user} />
         </Suspense>
       </div>
     </main>

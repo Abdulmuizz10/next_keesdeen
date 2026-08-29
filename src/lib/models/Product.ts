@@ -4,14 +4,21 @@ export type ProductStatus = "draft" | "published" | "archived";
 
 export interface IProductVariant {
   sku: string;
+
   attributes: {
     size?: string;
     color?: string;
     colorHex?: string;
   };
-  price?: number; // Override price, if different from basePrice
+
+  price?: number;
+
   stock: number;
+
+  lowStockThreshold?: number;
+
   images?: string[];
+
   isActive: boolean;
 }
 
@@ -41,16 +48,6 @@ export interface IProduct extends Document {
   isFeatured: boolean;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface IProductVariant {
-  sku: string;
-  attributes: { size?: string; color?: string; colorHex?: string };
-  price?: number;
-  stock: number;
-  lowStockThreshold?: number; // add this
-  images?: string[];
-  isActive: boolean;
 }
 
 const ProductVariantSchema = new Schema<IProductVariant>(

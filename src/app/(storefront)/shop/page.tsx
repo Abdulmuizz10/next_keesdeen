@@ -157,7 +157,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   return (
     <main className="min-h-screen bg-white">
       <section className="border-b sf-border">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12 py-12 mt-20 sm:mt-10">
+        <div className="mx-auto max-w-[1400px] px-4 py-12 mt-20 sm:mt-10">
           <h1 className="font-serif text-4xl sm:text-5xl font-light text-neutral-600">
             Shop All
           </h1>
@@ -167,7 +167,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12 py-10 sm:py-14">
+      <section className="mx-auto max-w-[1400px] px-4 py-10 sm:py-14">
         <div className="lg:grid lg:grid-cols-4 lg:gap-12">
           <aside className="lg:col-span-1 mb-8 lg:mb-0">
             <CategoryFilters

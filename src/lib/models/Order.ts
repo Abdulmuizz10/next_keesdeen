@@ -75,6 +75,7 @@ export interface IOrder extends Document {
   shippedAt?: Date;
   deliveredAt?: Date;
   metadata?: Record<string, unknown>;
+  refundVersion: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -273,6 +274,12 @@ const OrderSchema = new Schema<IOrder>(
     },
     metadata: {
       type: Schema.Types.Mixed,
+    },
+    refundVersion: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
     },
   },
   {

@@ -68,7 +68,7 @@ export default async function CustomerOrdersPage() {
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+      <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
         <h1 className="font-serif text-3xl font-semibold text-neutral-600 mb-8">
           My Orders
         </h1>

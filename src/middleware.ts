@@ -80,8 +80,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ---- /checkout, /account ----
-  if (pathname.startsWith("/checkout") || pathname.startsWith("/account")) {
+  // ---- /account ----
+  if (pathname.startsWith("/account")) {
     if (!session?.user) {
       const loginUrl = new URL("/auth/login", request.url);
       loginUrl.searchParams.set("callbackUrl", pathname);

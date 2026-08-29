@@ -86,8 +86,8 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
             src={collection.image}
             alt={collection.name}
             fill
-            sizes="100vw"
             priority
+            sizes="100vw"
             className="object-cover"
           />
         ) : (
@@ -117,7 +117,7 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
       </section>
 
       {/* Bento product grid */}
-      <section className="mx-auto max-w-[1400px] py-12 sm:py-16">
+      <section className="mx-auto max-w-[1400px] px-4 py-12 sm:py-16">
         {serializedProducts.length > 0 ? (
           <ProductGrid products={serializedProducts} />
         ) : (

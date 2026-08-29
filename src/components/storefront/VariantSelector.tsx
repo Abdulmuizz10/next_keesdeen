@@ -368,7 +368,7 @@ export function VariantSelector({ product, pricing }: VariantSelectorProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-6 gap-2">
+      <div className="flex gap-2">
         <motion.button
           whileTap={{ scale: 0.98 }}
           onClick={handleAddToCart}
@@ -388,7 +388,7 @@ export function VariantSelector({ product, pricing }: VariantSelectorProps) {
               : "Add to Cart"}
         </motion.button>
 
-        <div className="col-span-1 flex gap-2">
+        <div className="flex gap-2">
           <WishlistButton
             productId={product._id}
             size="lg"

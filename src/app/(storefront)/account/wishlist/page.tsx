@@ -112,7 +112,7 @@ export default function WishlistPage() {
     <main className="min-h-screen">
       {/* Header */}
       <section className="bg-white border-b border-neutral-100">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+        <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
           <div className="flex items-center justify-between">
             <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-neutral-600">
               My Wishlist
@@ -123,7 +123,7 @@ export default function WishlistPage() {
           </div>
         </div>
       </section>
-      <div className="bg-white mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-4">
+      <div className="bg-white mx-auto max-w-[1400px] px-4 py-4">
         {products.length === 0 ? (
           <div className="text-center py-20">
             <Heart size={48} className="mx-auto text-neutral-200 mb-4" />
@@ -162,8 +162,7 @@ export default function WishlistPage() {
                         <Image
                           src={product.images[0]}
                           alt={product.title}
-                          width={100}
-                          height={100}
+                          fill
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         />

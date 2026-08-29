@@ -148,7 +148,7 @@ export function FeaturedProductsSection({
   if (!products || products.length === 0) return null;
   return (
     <section className="py-16 sm:py-24 lg:py-32">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-[1400px] px-4">
         <SectionHeading title={title || "Bestsellers"} subtitle={subtitle} />
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 lg:gap-12">
           {products.slice(0, 6).map((p, idx) => (
@@ -164,7 +164,7 @@ export function NewArrivalsSection({ title, subtitle, products }: SectionData) {
   if (!products || products.length === 0) return null;
   return (
     <section className="py-16 sm:py-24 lg:py-32">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-[1400px] px-4">
         <SectionHeading title={title || "New Arrivals"} subtitle={subtitle} />
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 lg:gap-12">
           {products.slice(0, 6).map((p, idx) => (
@@ -180,7 +180,7 @@ export function BestSellersSection({ title, subtitle, products }: SectionData) {
   if (!products || products.length === 0) return null;
   return (
     <section className="py-16 sm:py-24 lg:py-32">
-      <div className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-[1400px] px-4">
         <SectionHeading title={title || "Best Sellers"} subtitle={subtitle} />
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 lg:gap-12">
           {products.slice(0, 6).map((p, idx) => (
@@ -291,7 +291,7 @@ export function BannerSection({ title, subtitle, promotion }: SectionData) {
   if (!promotion) {
     return (
       <section className="py-16 sm:py-20 bg-primary-400">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-8 lg:px-12 text-center">
+        <div className="mx-auto max-w-[1400px] px-4 text-center">
           <h2 className="font-serif text-2xl sm:text-3xl font-light text-white">
             {title || "Free Shipping"}
           </h2>

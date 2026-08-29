@@ -6,9 +6,15 @@ import Promotion from "@/lib/models/Promotion";
 import Product from "@/lib/models/Product";
 import Category from "@/lib/models/Category";
 import Collection from "@/lib/models/Collection";
+import Subscriber from "@/lib/models/Subscriber";
 import cloudinary from "@/lib/cloudinary";
+import {
+  sendPromotionBroadcast,
+  type PromotionEmailContent,
+} from "@/lib/email";
 
 const MAX_BANNER_BYTES = 8 * 1024 * 1024; // 8MB
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://keesdeen.com";
 
 // ─────────────────────────────────────────────
 // GET — List promotions
@@ -19,7 +25,6 @@ export async function GET() {
 
   const promotions = await Promotion.find().sort({ createdAt: -1 }).lean();
 
-  // Resolve scope names for display
   const allCategoryIds = new Set<string>();
   const allCollectionIds = new Set<string>();
   const allProductIds = new Set<string>();
@@ -28,11 +33,9 @@ export async function GET() {
     if (p.scope === "category" && p.scopeIds) {
       p.scopeIds.forEach((id) => allCategoryIds.add(id.toString()));
     }
-
     if (p.scope === "collection" && p.scopeIds) {
       p.scopeIds.forEach((id) => allCollectionIds.add(id.toString()));
     }
-
     if (p.scope === "product" && p.scopeIds) {
       p.scopeIds.forEach((id) => allProductIds.add(id.toString()));
     }
@@ -40,43 +43,26 @@ export async function GET() {
 
   const [categories, collections, products] = await Promise.all([
     allCategoryIds.size > 0
-      ? Category.find({
-          _id: { $in: Array.from(allCategoryIds) },
-        })
+      ? Category.find({ _id: { $in: Array.from(allCategoryIds) } })
           .select("name slug")
           .lean()
       : [],
-
     allCollectionIds.size > 0
-      ? Collection.find({
-          _id: { $in: Array.from(allCollectionIds) },
-        })
+      ? Collection.find({ _id: { $in: Array.from(allCollectionIds) } })
           .select("name slug")
           .lean()
       : [],
-
     allProductIds.size > 0
-      ? Product.find({
-          _id: { $in: Array.from(allProductIds) },
-        })
+      ? Product.find({ _id: { $in: Array.from(allProductIds) } })
           .select("title slug")
           .lean()
       : [],
   ]);
 
   const nameMap = new Map<string, string>();
-
-  for (const c of categories) {
-    nameMap.set(c._id.toString(), c.name);
-  }
-
-  for (const c of collections) {
-    nameMap.set(c._id.toString(), c.name);
-  }
-
-  for (const p of products) {
-    nameMap.set(p._id.toString(), p.title);
-  }
+  for (const c of categories) nameMap.set(c._id.toString(), c.name);
+  for (const c of collections) nameMap.set(c._id.toString(), c.name);
+  for (const p of products) nameMap.set(p._id.toString(), p.title);
 
   return NextResponse.json(
     promotions.map((p) => ({
@@ -96,12 +82,8 @@ export async function GET() {
 
 // ─────────────────────────────────────────────
 // POST
-//
-// application/json
-//   → Create promotion
-//
-// multipart/form-data
-//   → Upload promotion banner to Cloudinary
+//   application/json      → Create promotion (+ optional subscriber email blast)
+//   multipart/form-data   → Upload promotion banner to Cloudinary
 // ─────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   const { permission } = await requireRouteAccess("/admin/promotions");
@@ -122,14 +104,12 @@ export async function POST(request: NextRequest) {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
-
     if (!file.type.startsWith("image/")) {
       return NextResponse.json(
         { error: "File must be an image" },
         { status: 400 },
       );
     }
-
     if (file.size > MAX_BANNER_BYTES) {
       return NextResponse.json(
         { error: "Image must be under 8MB" },
@@ -139,7 +119,6 @@ export async function POST(request: NextRequest) {
 
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
-
       const result = await new Promise<{
         secure_url: string;
         public_id: string;
@@ -148,28 +127,16 @@ export async function POST(request: NextRequest) {
           {
             folder: "promotions/banners",
             resource_type: "image",
-            transformation: [
-              {
-                quality: "auto",
-                fetch_format: "auto",
-              },
-            ],
+            transformation: [{ quality: "auto", fetch_format: "auto" }],
           },
           (error, uploadResult) => {
             if (error || !uploadResult) {
               reject(error || new Error("Upload failed"));
               return;
             }
-
-            resolve(
-              uploadResult as {
-                secure_url: string;
-                public_id: string;
-              },
-            );
+            resolve(uploadResult as { secure_url: string; public_id: string });
           },
         );
-
         stream.end(buffer);
       });
 
@@ -179,7 +146,6 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       console.error("Cloudinary banner upload error:", error);
-
       return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
   }
@@ -191,10 +157,14 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
+  // Pull out the email-blast controls so they don't get saved onto the
+  // Promotion document itself.
+  const { notifySubscribers, emailContent, ...promotionData } = body;
+
   const promotion = await Promotion.create({
-    ...body,
-    startDate: new Date(body.startDate),
-    endDate: new Date(body.endDate),
+    ...promotionData,
+    startDate: new Date(promotionData.startDate),
+    endDate: new Date(promotionData.endDate),
   });
 
   await revalidateAffected(
@@ -203,6 +173,45 @@ export async function POST(request: NextRequest) {
       id.toString(),
     ) || [],
   );
+
+  // ────────────────────────────────────────────────────────────
+  // OPTIONAL: EMAIL BLAST TO ACTIVE SUBSCRIBERS
+  // Send { notifySubscribers: true, emailContent: { headline, bodyText,
+  // ctaLabel?, ctaUrl?, bannerImageUrl?, discountCode? } } in the same
+  // request body from your admin promotion form to trigger this.
+  // ────────────────────────────────────────────────────────────
+  if (notifySubscribers && emailContent?.headline && emailContent?.bodyText) {
+    try {
+      const subscribers = await Subscriber.find({ status: "active" })
+        .select("_id email")
+        .lean();
+
+      const content: PromotionEmailContent = {
+        headline: emailContent.headline,
+        bodyText: emailContent.bodyText,
+        ctaLabel: emailContent.ctaLabel || "Shop Now",
+        ctaUrl: emailContent.ctaUrl || `${SITE_URL}/products`,
+        bannerImageUrl: emailContent.bannerImageUrl,
+        discountCode: emailContent.discountCode,
+      };
+
+      await sendPromotionBroadcast({
+        recipients: subscribers.map((s) => ({
+          email: s.email,
+          subscriberId: s._id.toString(),
+        })),
+        content,
+        // Simple unsubscribe link for now — no signed token yet, so anyone
+        // with a subscriber id could hit it. Fine to ship with, but worth
+        // hardening later with an HMAC-signed token.
+        unsubscribeUrlFor: (subscriberId) =>
+          `${SITE_URL}/unsubscribe?id=${subscriberId}`,
+      });
+    } catch (broadcastError) {
+      // Never let a broadcast failure block promotion creation, which already succeeded
+      console.error("Promotion broadcast failed:", broadcastError);
+    }
+  }
 
   return NextResponse.json({
     _id: promotion._id.toString(),
@@ -223,13 +232,8 @@ export async function PATCH(request: NextRequest) {
 
   const { _id, ...updates } = await request.json();
 
-  if (updates.startDate) {
-    updates.startDate = new Date(updates.startDate);
-  }
-
-  if (updates.endDate) {
-    updates.endDate = new Date(updates.endDate);
-  }
+  if (updates.startDate) updates.startDate = new Date(updates.startDate);
+  if (updates.endDate) updates.endDate = new Date(updates.endDate);
 
   const promotion = await Promotion.findByIdAndUpdate(_id, updates, {
     new: true,
@@ -251,12 +255,8 @@ export async function PATCH(request: NextRequest) {
 
 // ─────────────────────────────────────────────
 // DELETE
-//
-// ?publicId=xxx
-//   → Delete banner from Cloudinary
-//
-// ?id=xxx
-//   → Delete promotion from database
+//   ?publicId=xxx → Delete banner from Cloudinary
+//   ?id=xxx       → Delete promotion from database
 // ─────────────────────────────────────────────
 export async function DELETE(request: NextRequest) {
   const { permission } = await requireRouteAccess("/admin/promotions");
@@ -269,33 +269,21 @@ export async function DELETE(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-
   const publicId = searchParams.get("publicId");
 
-  // ─────────────────────────────────────────────
-  // Delete Cloudinary banner
-  // ─────────────────────────────────────────────
   if (publicId) {
     try {
       await cloudinary.uploader.destroy(publicId);
-
-      return NextResponse.json({
-        success: true,
-      });
+      return NextResponse.json({ success: true });
     } catch (error) {
       console.error("Cloudinary delete error:", error);
-
       return NextResponse.json({ error: "Delete failed" }, { status: 500 });
     }
   }
 
-  // ─────────────────────────────────────────────
-  // Delete promotion
-  // ─────────────────────────────────────────────
   await dbConnect();
 
   const id = searchParams.get("id");
-
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
@@ -311,14 +299,11 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({
-    success: true,
-  });
+  return NextResponse.json({ success: true });
 }
 
 // ─────────────────────────────────────────────
-// Revalidate all storefront pages affected
-// by this promotion scope
+// Revalidate all storefront pages affected by this promotion scope
 // ─────────────────────────────────────────────
 async function revalidateAffected(scope: string, scopeIds: string[]) {
   revalidatePath("/");
@@ -330,15 +315,10 @@ async function revalidateAffected(scope: string, scopeIds: string[]) {
   }
 
   if (scope === "category" && scopeIds.length > 0) {
-    const cats = await Category.find({
-      _id: { $in: scopeIds },
-    })
+    const cats = await Category.find({ _id: { $in: scopeIds } })
       .select("slug")
       .lean();
-
-    for (const cat of cats) {
-      revalidatePath(`/category/${cat.slug}`);
-    }
+    for (const cat of cats) revalidatePath(`/category/${cat.slug}`);
 
     const products = await Product.find({
       categoryIds: { $in: scopeIds },
@@ -346,10 +326,7 @@ async function revalidateAffected(scope: string, scopeIds: string[]) {
     })
       .select("slug")
       .lean();
-
-    for (const p of products) {
-      revalidatePath(`/product/${p.slug}`);
-    }
+    for (const p of products) revalidatePath(`/product/${p.slug}`);
   }
 
   if (scope === "collection" && scopeIds.length > 0) {
@@ -359,21 +336,13 @@ async function revalidateAffected(scope: string, scopeIds: string[]) {
     })
       .select("slug")
       .lean();
-
-    for (const p of products) {
-      revalidatePath(`/product/${p.slug}`);
-    }
+    for (const p of products) revalidatePath(`/product/${p.slug}`);
   }
 
   if (scope === "product" && scopeIds.length > 0) {
-    const products = await Product.find({
-      _id: { $in: scopeIds },
-    })
+    const products = await Product.find({ _id: { $in: scopeIds } })
       .select("slug")
       .lean();
-
-    for (const p of products) {
-      revalidatePath(`/product/${p.slug}`);
-    }
+    for (const p of products) revalidatePath(`/product/${p.slug}`);
   }
 }

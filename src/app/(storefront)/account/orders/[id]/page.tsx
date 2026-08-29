@@ -139,7 +139,7 @@ export default async function OrderTrackingPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+      <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
         <Link
           href="/account/orders"
           className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-primary-500 mb-6 transition-colors"

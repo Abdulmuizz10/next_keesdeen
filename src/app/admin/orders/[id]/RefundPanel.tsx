@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { formatPrice } from "@/lib/format";
 import { Loader2, AlertCircle, CheckCircle, RotateCcw } from "lucide-react";
 
@@ -89,6 +89,8 @@ export function RefundPanel({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const refundIdempotencyKeyRef = useRef<string | null>(null);
+
   const totalSelected =
     Object.values(selectedLines).reduce((sum, line) => sum + line.amount, 0) +
     shippingRefund;
@@ -116,15 +118,22 @@ export function RefundPanel({
     variantSku: string,
     quantity: number,
     pricePerUnit: number,
+    maxQuantity: number,
   ) => {
     const key = `${productId}::${variantSku}`;
+
     if (quantity <= 0) {
       const { [key]: _, ...rest } = selectedLines;
       setSelectedLines(rest);
     } else {
+      const safeQuantity = Math.min(quantity, maxQuantity);
+
       setSelectedLines((prev) => ({
         ...prev,
-        [key]: { quantity, amount: quantity * pricePerUnit },
+        [key]: {
+          quantity: safeQuantity,
+          amount: safeQuantity * pricePerUnit,
+        },
       }));
     }
   };
@@ -133,6 +142,9 @@ export function RefundPanel({
     setIsProcessing(true);
     setError(null);
     setSuccess(null);
+    const idempotencyKey =
+      refundIdempotencyKeyRef.current ??
+      (refundIdempotencyKeyRef.current = crypto.randomUUID());
 
     try {
       let linesToRefund: {
@@ -175,6 +187,7 @@ export function RefundPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: order._id,
+          idempotencyKey,
           lines: linesToRefund,
           shippingRefund:
             refundType === "full" ? order.shippingTotal : shippingRefund,
@@ -196,6 +209,7 @@ export function RefundPanel({
       setShippingRefund(0);
       setReason("");
       setNotes("");
+      refundIdempotencyKeyRef.current = null;
 
       setTimeout(() => {
         window.location.reload();
@@ -382,6 +396,7 @@ export function RefundPanel({
                             line.variantSku,
                             parseInt(e.target.value) || 0,
                             line.price,
+                            remaining.quantity,
                           )
                         }
                         className="w-16 px-2 py-1 border border-[hsl(var(--border))] text-sm bg-[hsl(var(--background))]"

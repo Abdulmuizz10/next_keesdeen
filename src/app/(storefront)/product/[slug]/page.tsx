@@ -272,7 +272,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   ]);
 
   return (
-    <main className="min-h-screen bg-white mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-8 lg:mt-20">
+    <main className="min-h-screen bg-white mx-auto max-w-[1400px] px-4 py-8 lg:mt-20">
       {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"

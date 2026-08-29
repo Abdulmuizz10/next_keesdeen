@@ -384,112 +384,117 @@ export async function POST(request: NextRequest) {
 
       // ========================================
       // CREATE ORDER IN DATABASE
+      // Payment has succeeded at this point — any failure below
+      // must surface as a "critical" error, not a generic retry-safe one.
       // ========================================
+      try {
+        const order = await Order.create({
+          orderNumber,
+          idempotencyKey,
+          processedSquareEventIds: [],
+          userId: userId || undefined,
+          email: data.email,
+          phone: data.phone,
+          lines: orderLines.map((line) => ({
+            productId: line.productId,
+            variantSku: line.variantSku,
+            title: line.title,
+            variantTitle: line.variantTitle,
+            image: line.image,
+            quantity: line.quantity,
+            price: line.price,
+            totalPrice: line.totalPrice,
+            discountAmount: line.discountAmount,
+          })),
+          shippingAddress: data.shippingAddress,
+          billingAddress: data.billingAddress,
+          subtotal,
+          discountTotal: totalDiscount,
+          shippingTotal,
+          taxTotal,
+          grandTotal,
+          currency: "GBP",
+          status: "confirmed",
+          paymentStatus: payment.status === "COMPLETED" ? "paid" : "pending",
+          paymentMethod: "square",
+          squareOrderId,
+          squarePaymentId: payment.id,
+          couponCode: data.couponCode,
+          shippingMethod: data.shippingMethod,
+          notes: data.notes,
+        });
 
-      const order = await Order.create({
-        orderNumber,
-        idempotencyKey,
-        processedSquareEventIds: [],
-        userId: userId || undefined,
-        email: data.email,
-        phone: data.phone,
-        lines: orderLines.map((line) => ({
-          productId: line.productId,
-          variantSku: line.variantSku,
-          title: line.title,
-          variantTitle: line.variantTitle,
-          image: line.image,
-          quantity: line.quantity,
-          price: line.price,
-          totalPrice: line.totalPrice,
-          discountAmount: line.discountAmount,
-        })),
-        shippingAddress: data.shippingAddress,
-        billingAddress: data.billingAddress,
-        subtotal,
-        discountTotal: totalDiscount,
-        shippingTotal,
-        taxTotal,
-        grandTotal,
-        currency: "GBP",
-        status: "confirmed",
-        paymentStatus: payment.status === "COMPLETED" ? "paid" : "pending",
-        paymentMethod: "square",
-        squareOrderId,
-        squarePaymentId: payment.id,
-        couponCode: data.couponCode,
-        shippingMethod: data.shippingMethod,
-        notes: data.notes,
-      });
-
-      // Increment coupon usage exactly once, inside the idempotent create branch
-      if (data.couponCode) {
-        const usedCoupon = await Coupon.findOne({
-          code: data.couponCode.toUpperCase(),
-        }).select("_id");
-        if (usedCoupon) {
-          await Coupon.findByIdAndUpdate(usedCoupon._id, {
-            $inc: { usageCount: 1 },
-          });
+        // Increment coupon usage exactly once, inside the idempotent create branch
+        if (data.couponCode) {
+          const usedCoupon = await Coupon.findOne({
+            code: data.couponCode.toUpperCase(),
+          }).select("_id");
+          if (usedCoupon) {
+            await Coupon.findByIdAndUpdate(usedCoupon._id, {
+              $inc: { usageCount: 1 },
+            });
+          }
         }
-      }
 
-      // ========================================
-      // DECREMENT STOCK
-      // ========================================
-
-      for (const line of orderLines) {
-        await Product.updateOne(
-          {
-            _id: line.productId,
-            "variants.sku": line.variantSku,
-          },
-          {
-            $inc: {
-              "variants.$.stock": -line.quantity,
-              totalSold: line.quantity,
+        for (const line of orderLines) {
+          await Product.updateOne(
+            { _id: line.productId, "variants.sku": line.variantSku },
+            {
+              $inc: {
+                "variants.$.stock": -line.quantity,
+                totalSold: line.quantity,
+              },
             },
+          );
+        }
+
+        if (userId) {
+          await Cart.findOneAndDelete({ userId });
+        }
+
+        await sendOrderConfirmationEmail({
+          orderNumber,
+          customerName: `${data.shippingAddress.firstName} ${data.shippingAddress.lastName}`,
+          customerEmail: data.email,
+          lines: orderLines.map((line) => ({
+            title: line.title,
+            variantTitle: line.variantTitle,
+            quantity: line.quantity,
+            price: line.price,
+          })),
+          subtotal,
+          discountTotal: totalDiscount,
+          shippingTotal,
+          taxTotal,
+          grandTotal,
+          shippingAddress: data.shippingAddress,
+          currency: "GBP",
+        });
+
+        return NextResponse.json({
+          success: true,
+          orderNumber,
+          orderId: order._id.toString(),
+          paymentId: payment.id,
+        });
+      } catch (postPaymentError) {
+        console.error(
+          "Post-payment order finalization error:",
+          postPaymentError,
+        );
+
+        // Payment already succeeded — this is NOT safe to just show a red banner for.
+        return NextResponse.json(
+          {
+            critical: true,
+            error:
+              "Your payment was processed, but we hit a problem finishing your order.",
+            paymentId: payment.id,
+            idempotencyKey,
           },
+          { status: 500 },
         );
       }
-
-      // ========================================
-      // CLEAR CART
-      // ========================================
-
-      if (userId) {
-        await Cart.findOneAndDelete({ userId });
-      }
-
-      // ========================================
-      // SEND CONFIRMATION EMAIL
-      // ========================================
-
-      await sendOrderConfirmationEmail({
-        orderNumber,
-        customerName: `${data.shippingAddress.firstName} ${data.shippingAddress.lastName}`,
-        customerEmail: data.email,
-        lines: orderLines.map((line) => ({
-          title: line.title,
-          variantTitle: line.variantTitle,
-          quantity: line.quantity,
-          price: line.price,
-        })),
-        subtotal,
-        discountTotal: totalDiscount,
-        shippingTotal,
-        taxTotal,
-        grandTotal,
-        shippingAddress: data.shippingAddress,
-        currency: "GBP",
-      });
-
-      return NextResponse.json({
-        success: true,
-        orderNumber,
-        orderId: order._id.toString(),
-        paymentId: payment.id,
-      });
     } catch (squareError) {
       console.error("Square payment error:", squareError);
 

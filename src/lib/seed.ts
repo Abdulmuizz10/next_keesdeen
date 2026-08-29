@@ -984,9 +984,18 @@ async function seed() {
   // ══════════════════════════════════════════════════════════════════
   // SUBSCRIBERS (Phase 13)
   // ══════════════════════════════════════════════════════════════════
-  await Subscriber.insertMany([
+  type SeedSubscriber = {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    source: string;
+    tags: string[];
+    subscribedAt?: Date;
+  };
+
+  const seedSubscribers: SeedSubscriber[] = [
     {
-      email: "john.doe@example.com",
+      email: "john.doe@seedmail.dev",
       firstName: "John",
       lastName: "Doe",
       source: "footer",
@@ -994,7 +1003,7 @@ async function seed() {
       subscribedAt: ago30d,
     },
     {
-      email: "jane.smith@example.com",
+      email: "jane.smith@seedmail.dev",
       firstName: "Jane",
       lastName: "Smith",
       source: "popup",
@@ -1002,35 +1011,53 @@ async function seed() {
       subscribedAt: now,
     },
     {
-      email: "mike.johnson@example.com",
+      email: "mike.johnson@seedmail.dev",
       firstName: "Mike",
       source: "checkout",
       tags: [],
     },
     {
-      email: "sarah.williams@example.com",
+      email: "sarah.williams@seedmail.dev",
       firstName: "Sarah",
       lastName: "Williams",
       source: "footer",
       tags: ["vip", "repeat-customer"],
     },
-    { email: "david.brown@example.com", source: "popup", tags: ["new"] },
+    { email: "david.brown@seedmail.dev", source: "popup", tags: ["new"] },
     {
-      email: "customer@example.com",
+      email: "demo.customer@seedmail.dev",
       firstName: "Demo",
       lastName: "Customer",
       source: "footer",
       tags: ["customer"],
     },
     {
-      email: "maria@example.com",
+      email: "maria.lopez@seedmail.dev",
       firstName: "Maria",
       lastName: "Lopez",
       source: "homepage",
       tags: ["new"],
     },
-  ]);
-  console.log("📧 Created 7 subscribers");
+  ];
+
+  if (process.env.SEED_TEST_EMAIL) {
+    seedSubscribers.push({
+      email: process.env.SEED_TEST_EMAIL,
+      firstName: "Real",
+      lastName: "Test Recipient",
+      source: "seed-script",
+      tags: ["real-test-recipient"],
+    });
+  } else {
+    console.warn(
+      "⚠️  SEED_TEST_EMAIL not set — no seeded subscriber has a real inbox. " +
+        "Add SEED_TEST_EMAIL=you@yourdomain.com to .env and re-seed if you want " +
+        "to verify broadcast delivery lands somewhere you can actually check.",
+    );
+  }
+
+  await Subscriber.insertMany(seedSubscribers);
+  console.log(`📧 Created ${seedSubscribers.length} subscribers`);
 
   // ══════════════════════════════════════════════════════════════════
   // ORDERS (Phase 5 — needed for verified-purchase reviews)

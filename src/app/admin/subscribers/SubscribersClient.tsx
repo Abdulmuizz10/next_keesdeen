@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/admin";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import Image from "next/image";
 import {
   Search,
   ChevronDown,
@@ -21,6 +22,8 @@ import {
   FileSpreadsheet,
   FileText,
   AlertCircle,
+  Upload,
+  X,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
 
@@ -521,9 +524,8 @@ export function SubscribersClient({
         </div>
       </div>
 
-      {/* Broadcast Modal (Stub) */}
       {broadcastModal && (
-        <BroadcastStubModal
+        <BroadcastModal
           onClose={() => setBroadcastModal(false)}
           activeCount={statusCounts.active}
         />
@@ -533,27 +535,305 @@ export function SubscribersClient({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Broadcast Stub Modal                                               */
+/*  Broadcast banner upload — same Cloudinary flow as CollectionsClient's
+    ImageUploadField (POST /api/admin/upload with FormData, returns {url}) */
 /* ------------------------------------------------------------------ */
-function BroadcastStubModal({
+
+function BroadcastImageUploadField({
+  label,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  disabled?: boolean;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Upload failed");
+      }
+      onChange(data.url as string);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const isDisabled = disabled || uploading;
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-1.5">
+        {label}
+      </label>
+
+      {value ? (
+        <div className="relative w-full aspect-3/1 border border-[hsl(var(--border))] overflow-hidden group">
+          <Image
+            src={value}
+            alt=""
+            width={600}
+            height={200}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isDisabled}
+              className="text-white flex items-center gap-1 text-xs font-medium"
+              title="Replace image"
+            >
+              {uploading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Upload size={14} />
+              )}
+              Replace
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              disabled={isDisabled}
+              className="text-white flex items-center gap-1 text-xs font-medium"
+              title="Remove image"
+            >
+              <X size={14} />
+              Remove
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isDisabled}
+          className="w-full aspect-3/1 border border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {uploading ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Upload size={18} />
+          )}
+          <span className="text-xs font-medium">
+            {uploading ? "Uploading…" : "Upload banner image"}
+          </span>
+        </button>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Broadcast Modal                                                    */
+/* ------------------------------------------------------------------ */
+
+interface BroadcastResult {
+  sent: number;
+  failed: number;
+  skipped: number;
+  total: number;
+}
+
+function BroadcastModal({
   onClose,
   activeCount,
 }: {
   onClose: () => void;
   activeCount: number;
 }) {
+  const [headline, setHeadline] = useState("");
+  const [bodyText, setBodyText] = useState("");
+  const [ctaLabel, setCtaLabel] = useState("Shop now");
+  const [ctaUrl, setCtaUrl] = useState("");
+  const [discountCode, setDiscountCode] = useState("");
+  const [bannerImageUrl, setBannerImageUrl] = useState("");
+  const [confirmSend, setConfirmSend] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<BroadcastResult | null>(null);
+
+  const canSubmit =
+    headline.trim().length > 0 &&
+    bodyText.trim().length > 0 &&
+    ctaLabel.trim().length > 0 &&
+    ctaUrl.trim().length > 0;
+
+  const handleSend = async () => {
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          headline: headline.trim(),
+          bodyText: bodyText.trim(),
+          ctaLabel: ctaLabel.trim(),
+          ctaUrl: ctaUrl.trim(),
+          discountCode: discountCode.trim() || undefined,
+          bannerImageUrl: bannerImageUrl.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send broadcast");
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send broadcast");
+      setConfirmSend(false);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Result screen — outcome depends on sent/failed, not just a 200 response
+  if (result) {
+    const allFailed = result.sent === 0 && result.failed > 0;
+    const partialFailure = result.sent > 0 && result.failed > 0;
+    const statusColor = allFailed ? DANGER : partialFailure ? WARNING : ACCENT;
+    const heading = allFailed
+      ? "Broadcast failed to send"
+      : partialFailure
+        ? "Broadcast sent with some failures"
+        : "Broadcast sent";
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+        <div className="relative bg-[hsl(var(--background))] border border-[hsl(var(--border))] shadow-2xl w-full max-w-md p-6">
+          <div className="flex items-center gap-2 mb-4">
+            {allFailed ? (
+              <AlertCircle size={15} style={{ color: statusColor }} />
+            ) : (
+              <Send size={15} style={{ color: statusColor }} />
+            )}
+            <h2 className="text-sm font-semibold text-[hsl(var(--foreground))]">
+              {heading}
+            </h2>
+          </div>
+
+          {allFailed && (
+            <div
+              className="mb-4 pl-3 py-2.5 border-l-[3px] bg-[hsl(var(--muted))] flex gap-2"
+              style={{ borderColor: DANGER }}
+            >
+              <AlertCircle
+                size={16}
+                className="shrink-0 mt-0.5"
+                style={{ color: DANGER }}
+              />
+              <p className="text-sm text-[hsl(var(--foreground))]">
+                No emails went out. Check the server logs for the delivery error
+                before trying again.
+              </p>
+            </div>
+          )}
+
+          <table role="presentation" className="w-full mb-6">
+            <tbody>
+              <tr>
+                <td className="py-1.5 text-sm text-[hsl(var(--muted-foreground))]">
+                  Delivered
+                </td>
+                <td
+                  className="py-1.5 text-sm font-semibold text-right"
+                  style={{ color: result.sent > 0 ? ACCENT : "inherit" }}
+                >
+                  {result.sent}
+                </td>
+              </tr>
+              {result.failed > 0 && (
+                <tr>
+                  <td className="py-1.5 text-sm text-[hsl(var(--muted-foreground))]">
+                    Failed
+                  </td>
+                  <td
+                    className="py-1.5 text-sm font-semibold text-right"
+                    style={{ color: DANGER }}
+                  >
+                    {result.failed}
+                  </td>
+                </tr>
+              )}
+              {result.skipped > 0 && (
+                <tr>
+                  <td className="py-1.5 text-sm text-[hsl(var(--muted-foreground))]">
+                    Skipped (test/invalid domain)
+                  </td>
+                  <td className="py-1.5 text-sm font-semibold text-right text-[hsl(var(--muted-foreground))]">
+                    {result.skipped}
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <td className="py-1.5 text-sm text-[hsl(var(--muted-foreground))] border-t border-[hsl(var(--border))]">
+                  Active subscribers
+                </td>
+                <td className="py-1.5 text-sm font-semibold text-right text-[hsl(var(--foreground))] border-t border-[hsl(var(--border))]">
+                  {result.total}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs font-semibold uppercase tracking-wider hover:opacity-85 transition-opacity"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-[hsl(var(--card))] border border-[hsl(var(--border))] shadow-2xl w-full max-w-md p-6">
-        <div className="flex items-center gap-2 mb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={sending ? undefined : onClose}
+      />
+      <div className="relative bg-[hsl(var(--background))] border border-[hsl(var(--border))] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 admin-sidebar">
+        <div className="flex items-center gap-2 mb-1">
           <Send size={15} className="text-[hsl(var(--muted-foreground))]" />
           <h2 className="text-sm font-semibold text-[hsl(var(--foreground))]">
             Send Broadcast
           </h2>
         </div>
 
-        <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">
+        <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
           <strong className="text-[hsl(var(--foreground))] font-semibold">
             {activeCount}
           </strong>{" "}
@@ -561,47 +841,151 @@ function BroadcastStubModal({
           broadcast.
         </p>
 
-        <div
-          className="pl-3 py-2.5 border-l-[3px] bg-[hsl(var(--muted))] flex gap-2"
-          style={{ borderColor: WARNING }}
-        >
-          <AlertCircle
-            size={16}
-            className="shrink-0 mt-0.5"
-            style={{ color: WARNING }}
-          />
-          <div className="text-sm text-[hsl(var(--foreground))]">
-            <p className="font-semibold mb-1">Integration point</p>
-            <p className="text-[hsl(var(--muted-foreground))]">
-              This will connect to Resend Broadcasts or Klaviyo for
-              segmentation, templates, scheduling, and analytics.
-            </p>
-            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">
-              For now, export subscribers and import them into your email
-              platform.
-            </p>
+        {error && (
+          <div
+            className="mb-4 pl-3 py-2.5 border-l-[3px] bg-[hsl(var(--muted))] flex gap-2"
+            style={{ borderColor: DANGER }}
+          >
+            <AlertCircle
+              size={16}
+              className="shrink-0 mt-0.5"
+              style={{ color: DANGER }}
+            />
+            <p className="text-sm text-[hsl(var(--foreground))]">{error}</p>
           </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-1.5">
+              Headline *
+            </label>
+            <input
+              value={headline}
+              onChange={(e) => setHeadline(e.target.value)}
+              maxLength={120}
+              disabled={sending}
+              placeholder="New arrivals are here"
+              className="w-full px-3 py-2 border border-[hsl(var(--border))] text-sm bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--foreground))] disabled:opacity-60"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-1.5">
+              Body text *
+            </label>
+            <textarea
+              value={bodyText}
+              onChange={(e) => setBodyText(e.target.value)}
+              rows={4}
+              maxLength={600}
+              disabled={sending}
+              placeholder="Tell subscribers what's new…"
+              className="w-full px-3 py-2 border border-[hsl(var(--border))] text-sm bg-[hsl(var(--background))] text-[hsl(var(--foreground))] resize-none focus:outline-none focus:border-[hsl(var(--foreground))] disabled:opacity-60"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-1.5">
+                Button label *
+              </label>
+              <input
+                value={ctaLabel}
+                onChange={(e) => setCtaLabel(e.target.value)}
+                maxLength={40}
+                disabled={sending}
+                placeholder="Shop now"
+                className="w-full px-3 py-2 border border-[hsl(var(--border))] text-sm bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--foreground))] disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-1.5">
+                Discount code
+              </label>
+              <input
+                value={discountCode}
+                onChange={(e) => setDiscountCode(e.target.value)}
+                maxLength={30}
+                disabled={sending}
+                placeholder="Optional"
+                className="w-full px-3 py-2 border border-[hsl(var(--border))] text-sm bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--foreground))] disabled:opacity-60"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-1.5">
+              Button link *
+            </label>
+            <input
+              value={ctaUrl}
+              onChange={(e) => setCtaUrl(e.target.value)}
+              disabled={sending}
+              placeholder="https://keesdeen.com/products?sort=newest"
+              className="w-full px-3 py-2 border border-[hsl(var(--border))] text-sm bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--foreground))] disabled:opacity-60"
+            />
+          </div>
+
+          <BroadcastImageUploadField
+            label="Banner Image (optional)"
+            value={bannerImageUrl}
+            onChange={setBannerImageUrl}
+            disabled={sending}
+          />
         </div>
 
-        <div className="mt-6 flex gap-2 justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-[hsl(var(--border))] text-xs font-semibold uppercase tracking-wider text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] transition-colors"
+        {!confirmSend ? (
+          <div className="mt-6 flex gap-2 justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-[hsl(var(--border))] text-xs font-semibold uppercase tracking-wider text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => setConfirmSend(true)}
+              disabled={!canSubmit}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs font-semibold uppercase tracking-wider hover:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            >
+              <Send size={14} /> Review &amp; Send
+            </button>
+          </div>
+        ) : (
+          <div
+            className="mt-6 pl-3 py-3 border-l-[3px] bg-[hsl(var(--muted))]"
+            style={{ borderColor: WARNING }}
           >
-            Close
-          </button>
-          <button
-            onClick={() => {
-              alert(
-                "Export/broadcast functionality will be available when Resend Broadcasts or Klaviyo is connected.",
-              );
-              onClose();
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs font-semibold uppercase tracking-wider hover:opacity-85 transition-opacity"
-          >
-            <Download size={14} /> Export Subscribers
-          </button>
-        </div>
+            <p className="text-sm font-semibold text-[hsl(var(--foreground))] mb-1">
+              Send to {activeCount} subscriber{activeCount !== 1 ? "s" : ""}?
+            </p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">
+              This can&apos;t be undone.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmSend(false)}
+                disabled={sending}
+                className="px-4 py-2 border border-[hsl(var(--border))] text-xs font-semibold uppercase tracking-wider text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] disabled:opacity-50 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={sending}
+                className="inline-flex items-center gap-2 px-4 py-2 text-white text-xs font-semibold uppercase tracking-wider hover:opacity-85 disabled:opacity-60 transition-opacity"
+                style={{ backgroundColor: ACCENT }}
+              >
+                {sending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Send size={14} />
+                )}
+                {sending ? "Sending…" : "Confirm & Send"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -146,7 +146,7 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+      <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
         {/* Page header */}
         <div className="mb-10">
           <p className="text-[10px] font-sans font-semibold uppercase tracking-[0.14em] text-neutral-400 mb-2">

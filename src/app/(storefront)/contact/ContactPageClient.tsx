@@ -50,20 +50,39 @@ export function ContactPageClient({
   });
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState(false);
 
   const addressLines = formatAddress(address);
+
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setSending(true);
+  //   await new Promise((r) => setTimeout(r, 1000));
+  //   setSending(false);
+  //   setSubmitted(true);
+  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setSending(false);
-    setSubmitted(true);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("Failed to send");
+      setSubmitted(true);
+    } catch {
+      setError(true);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-white">
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12 py-14 mt-20 sm:mt-10">
+      <div className="mx-auto max-w-[1400px] px-4 py-14 mt-20 sm:mt-10">
         <h1 className="font-serif text-4xl sm:text-5xl font-light text-neutral-600 mb-4">
           Contact Us
         </h1>
@@ -251,6 +270,11 @@ export function ContactPageClient({
           </div>
         </div>
       </div>
+      {error && (
+        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow">
+          Something went wrong. Please try again.
+        </div>
+      )}
     </main>
   );
 }

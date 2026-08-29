@@ -3,6 +3,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import User from "@/lib/models/User";
+import { sendPasswordChangedEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,14 +12,14 @@ export async function POST(request: NextRequest) {
     if (!token || !email || !newPassword) {
       return NextResponse.json(
         { error: "This reset link is invalid or has expired." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (typeof newPassword !== "string" || newPassword.length < 8) {
       return NextResponse.json(
         { error: "Password must be at least 8 characters." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (!user || !user.resetPasswordTokenHash || !user.resetPasswordExpiresAt) {
       return NextResponse.json(
         { error: "This reset link is invalid or has expired." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -41,16 +42,19 @@ export async function POST(request: NextRequest) {
       await user.save();
       return NextResponse.json(
         { error: "This reset link has expired. Please request a new one." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Hash the incoming token and compare against the stored hash
-    const incomingHash = crypto.createHash("sha256").update(token).digest("hex");
+    const incomingHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
     if (incomingHash !== user.resetPasswordTokenHash) {
       return NextResponse.json(
         { error: "This reset link is invalid or has expired." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -61,12 +65,16 @@ export async function POST(request: NextRequest) {
     user.resetPasswordExpiresAt = undefined;
     await user.save();
 
+    // Send password changed confirmation email
+    const name = user.name || "User";
+    sendPasswordChangedEmail({ email, name });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Reset password error:", error);
     return NextResponse.json(
       { error: "An error occurred. Please try again." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

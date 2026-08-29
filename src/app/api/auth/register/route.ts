@@ -3,11 +3,15 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import User from "@/lib/models/User";
+import { sendWelcomeEmail } from "@/lib/email";
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   email: z.string().email("Invalid email"),
-  password: z.string().min(8, "Password must be at least 8 characters").max(100),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(100),
 });
 
 export async function POST(request: NextRequest) {
@@ -18,7 +22,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json(
         { error: validation.error.flatten().fieldErrors },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -30,7 +34,7 @@ export async function POST(request: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { error: "An account with this email already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -44,12 +48,15 @@ export async function POST(request: NextRequest) {
       emailVerified: new Date(),
     });
 
+    // Send welcome email
+    sendWelcomeEmail({ name, email });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json(
       { error: "An error occurred during registration" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
