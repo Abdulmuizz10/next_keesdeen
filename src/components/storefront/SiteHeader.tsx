@@ -65,11 +65,6 @@ export function SiteHeader() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHomePage]);
 
-  // Transparent only while on the homepage and still at the very top.
-  // Every other route — and the homepage once scrolled — renders a solid
-  // white bar, so the logo needs to switch alongside it: white logo over
-  // the transparent hero, dark logo once there's a white background behind
-  // it (scrolled home, or any non-home route).
   const isTransparent = isHomePage && !scrolled;
   const logoSrc = isTransparent ? mainLogoWhite : mainLogo;
   const iconColor = isTransparent ? "text-white" : "text-neutral-500";
