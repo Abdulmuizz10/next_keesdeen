@@ -173,7 +173,7 @@ export default function TrackOrderPage() {
   );
 }
 
-export default function OrderResult({
+function OrderResult({
   result,
   onReset,
 }: {
