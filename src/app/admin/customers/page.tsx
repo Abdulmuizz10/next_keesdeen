@@ -144,7 +144,7 @@ export default async function CustomersPage() {
 
             <div className="w-9 h-9 flex items-center justify-center bg-[hsl(var(--muted))]">
               <span className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">
-                ₦
+                £
               </span>
             </div>
           </div>

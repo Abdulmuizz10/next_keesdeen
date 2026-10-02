@@ -71,7 +71,12 @@ export async function POST(request: NextRequest) {
       tags: ["new"],
     });
 
-    sendSubscriberWelcomeEmail({
+    // CHANGED: this is now awaited. sendSubscriberWelcomeEmail no longer
+    // just fires an HTTP request to Resend -- it enqueues a job via a
+    // network call to QStash. On Netlify, a serverless function can be
+    // frozen the instant it returns a response, which could cut that call
+    // off mid-flight if it isn't awaited first.
+    await sendSubscriberWelcomeEmail({
       email: data.email,
       firstName: data.firstName,
     });

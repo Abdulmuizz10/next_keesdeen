@@ -526,9 +526,8 @@ function ShippingTab({ initialZones }: { initialZones: ShippingZoneData[] }) {
     setZones((p) => p.filter((z) => z._id !== id));
   };
 
-  const fmt = (cents: number) =>
-    cents === 0 ? "Free" : `$${(cents / 100).toFixed(2)}`;
-
+  const fmtPound = (cents: number) =>
+    cents === 0 ? "Free" : `£${(cents / 100).toFixed(2)}`;
   return (
     <>
       <div className="flex justify-end mb-4">
@@ -608,7 +607,7 @@ function ShippingTab({ initialZones }: { initialZones: ShippingZoneData[] }) {
                     >
                       <td className="px-5 py-2.5 font-medium">{r.name}</td>
                       <td className="px-5 py-2.5 text-right font-mono">
-                        {fmt(r.price)}
+                        {fmtPound(r.price)}
                       </td>
                       <td className="px-5 py-2.5">
                         {r.estimatedDaysMin}–{r.estimatedDaysMax} days

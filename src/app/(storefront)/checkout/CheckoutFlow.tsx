@@ -14,6 +14,7 @@ import {
   Tag,
   X,
 } from "lucide-react";
+import { mainLogoWhite } from "@/assets";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { useCartStore } from "@/store/cartStore";
@@ -1547,79 +1548,129 @@ export function CheckoutFlow({ user, squareConfig }: CheckoutFlowProps) {
           </div>
         </div>
       </div>
-      {/* <AnimatePresence>
-        {isProcessing && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 h-screen w-screen flex flex-col items-center justify-center gap-4 bg-black/60 backdrop-blur-sm z-50"
-          >
-            <Loader2 size={40} className="animate-spin text-white" />
-            <p className="font-serif text-lg text-white">
-              Processing your payment…
-            </p>
-            <p className="font-serif text-xs text-white/60 tracking-wide">
-              Please don&apos;t close or refresh this page
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence> */}
       <AnimatePresence>
         {isProcessing && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 h-screen w-screen flex items-center justify-center bg-black/70 backdrop-blur-sm z-50"
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
           >
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: 0.1 }}
-              className="flex flex-col items-center gap-8 px-6 text-center"
-            >
-              {/* Rotating square frame instead of a generic spinner */}
-              <div className="relative w-14 h-14">
-                <motion.div
-                  className="absolute inset-0 border border-white/20"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            <div className="flex w-full max-w-md flex-col items-center px-6">
+              {/* WORDMARK */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.8,
+                  delay: 0.1,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="relative"
+              >
+                <Image
+                  src={mainLogoWhite}
+                  alt="Keesdeen"
+                  width={180}
+                  height={60}
+                  className="h-auto w-[180px] object-contain"
+                  priority
                 />
+
+                {/* Subtle light sweep */}
                 <motion.div
-                  className="absolute inset-0 border-t border-primary-400"
-                  animate={{ rotate: 360 }}
+                  className="pointer-events-none absolute inset-y-0 -left-10 w-10 bg-linear-to-r from-transparent via-white/20 to-transparent blur-md"
+                  animate={{
+                    x: ["0%", "420%"],
+                  }}
                   transition={{
-                    duration: 1.4,
+                    duration: 2.2,
                     repeat: Infinity,
-                    ease: "linear",
+                    repeatDelay: 1.2,
+                    ease: "easeInOut",
                   }}
                 />
-              </div>
+              </motion.div>
 
-              <div className="space-y-2">
-                <p className="font-serif text-xl text-white">
-                  Processing your payment
+              {/* STATUS */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.45 }}
+                className="mt-16 flex flex-col items-center"
+              >
+                <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/80">
+                  Processing Order
                 </p>
-                <p className="font-sans text-xs uppercase tracking-[0.15em] text-white/50">
-                  Do not close or refresh this page
-                </p>
-              </div>
 
-              {/* Thin indeterminate progress line — echoes the checkout step indicator */}
-              <div className="w-48 h-px bg-white/10 overflow-hidden">
+                <div className="mt-4 flex items-center gap-1.5">
+                  <motion.span
+                    className="h-1 w-1 rounded-full bg-white"
+                    animate={{ opacity: [0.25, 1, 0.25] }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      delay: 0,
+                    }}
+                  />
+
+                  <motion.span
+                    className="h-1 w-1 rounded-full bg-white"
+                    animate={{ opacity: [0.25, 1, 0.25] }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      delay: 0.2,
+                    }}
+                  />
+
+                  <motion.span
+                    className="h-1 w-1 rounded-full bg-white"
+                    animate={{ opacity: [0.25, 1, 0.25] }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      delay: 0.4,
+                    }}
+                  />
+                </div>
+              </motion.div>
+
+              {/* EDITORIAL PROGRESS LINE */}
+              <motion.div
+                initial={{ opacity: 0, scaleX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                transition={{
+                  duration: 0.7,
+                  delay: 0.55,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="mt-10 h-px w-full max-w-[220px] origin-left overflow-hidden bg-white/10"
+              >
                 <motion.div
-                  className="h-full w-1/3 bg-primary-400"
-                  animate={{ x: ["-100%", "300%"] }}
+                  className="h-full w-1/2 bg-white"
+                  animate={{
+                    x: ["-100%", "300%"],
+                  }}
                   transition={{
-                    duration: 1.6,
+                    duration: 1.8,
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
                 />
-              </div>
-            </motion.div>
+              </motion.div>
+
+              {/* SMALL DISCLAIMER */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                className="mt-6 text-center text-[9px] uppercase tracking-[0.2em] text-white/30"
+              >
+                Please do not close this window
+              </motion.p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -2003,7 +2054,7 @@ function PaymentStep({
 
             {/* CARD */}
             <div className="border border-neutral-200 p-4 bg-white">
-              <div
+              {/* <div
                 id="card-container"
                 ref={cardContainerRef}
                 className="min-h-[100px]"
@@ -2011,6 +2062,21 @@ function PaymentStep({
                 {!cardReady && (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+                  </div>
+                )}
+              </div> */}
+              <div className="relative min-h-[100px]">
+                {/* Square OWNS this element. Keep it completely empty. */}
+                <div
+                  id="card-container"
+                  ref={cardContainerRef}
+                  className="min-h-[100px]"
+                />
+
+                {/* React owns this element. */}
+                {!cardReady && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white">
+                    <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
                   </div>
                 )}
               </div>

@@ -1,97 +1,69 @@
+/**
+ * One-off maintenance script: recompute every product's avgRating and
+ * reviewCount from actual approved Review documents, instead of trusting
+ * whatever static numbers may have been seeded directly onto the product.
+ *
+ * Run once with: npx tsx lib/recompute-product-ratings.ts
+ * (adjust the import paths below if your models live elsewhere relative
+ * to wherever you place this file)
+ */
 import mongoose from "mongoose";
-import Subscriber from "@/lib/models/Subscriber";
 import "dotenv/config";
 
+import Product from "./models/Product";
+import Review from "./models/Review";
+
 const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI)
+if (!MONGODB_URI) {
   throw new Error("Please define MONGODB_URI environment variable");
-
-// Resend rejects an ENTIRE batch send if even one recipient is at a
-// reserved/example domain (example.com/.org/.net, test.com) — that's what
-// broke "Send Broadcast." This rewrites just the domain on any subscriber
-// stuck with one of those, keeping the local part (before the @) so emails
-// stay recognizable and stay unique.
-const RESERVED_DOMAINS = [
-  "example.com",
-  "example.org",
-  "example.net",
-  "test.com",
-];
-const REPLACEMENT_DOMAIN = "seedmail.dev";
-
-async function fixSubscriberEmails() {
-  try {
-    console.log("🌱 Starting subscriber email backfill...");
-    await mongoose.connect(MONGODB_URI as string);
-
-    const pattern = new RegExp(
-      `@(${RESERVED_DOMAINS.map((d) => d.replace(".", "\\.")).join("|")})$`,
-      "i",
-    );
-
-    const affected = await Subscriber.find({ email: pattern });
-    console.log(`Found ${affected.length} subscriber(s) on reserved domains`);
-
-    let updated = 0;
-    let skipped = 0;
-
-    for (const sub of affected) {
-      const localPart = sub.email.split("@")[0];
-      const newEmail = `${localPart}@${REPLACEMENT_DOMAIN}`;
-
-      const clash = await Subscriber.findOne({
-        email: newEmail,
-        _id: { $ne: sub._id },
-      });
-      if (clash) {
-        console.warn(
-          `⚠️  Skipping ${sub.email} — ${newEmail} is already taken by another subscriber`,
-        );
-        skipped++;
-        continue;
-      }
-
-      sub.email = newEmail;
-      await sub.save();
-      updated++;
-    }
-
-    // Optionally add a real inbox you can actually check, if it's not
-    // already a subscriber. Set SEED_TEST_EMAIL in your .env first.
-    if (process.env.SEED_TEST_EMAIL) {
-      const exists = await Subscriber.findOne({
-        email: process.env.SEED_TEST_EMAIL,
-      });
-      if (!exists) {
-        await Subscriber.create({
-          email: process.env.SEED_TEST_EMAIL,
-          firstName: "Real",
-          lastName: "Test Recipient",
-          source: "migration-script",
-          status: "active",
-          tags: ["real-test-recipient"],
-        });
-        console.log(
-          `➕ Added real test subscriber: ${process.env.SEED_TEST_EMAIL}`,
-        );
-      }
-    } else {
-      console.warn(
-        "⚠️  SEED_TEST_EMAIL not set — no real inbox added. Set it in .env if you " +
-          "want a subscriber you can actually check broadcast delivery against.",
-      );
-    }
-
-    console.log("migration complete.");
-    console.log(`Matched subscribers: ${affected.length}`);
-    console.log(`Updated: ${updated}`);
-    console.log(`Skipped (email clash): ${skipped}`);
-  } catch (error) {
-    console.error("Migration failed:", error);
-    process.exit(1);
-  } finally {
-    process.exit(0);
-  }
 }
 
-fixSubscriberEmails();
+async function recomputeAll() {
+  console.log("🔧 Connecting to MongoDB…");
+  await mongoose.connect(MONGODB_URI as string);
+
+  const products = await Product.find()
+    .select("_id title avgRating reviewCount")
+    .lean();
+  console.log(`📦 Found ${products.length} products — recomputing ratings…`);
+
+  let changed = 0;
+
+  for (const product of products) {
+    const stats = await Review.aggregate([
+      { $match: { productId: product._id, status: "approved" } },
+      {
+        $group: {
+          _id: null,
+          avgRating: { $avg: "$rating" },
+          reviewCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const avgRating = stats[0] ? Math.round(stats[0].avgRating * 10) / 10 : 0;
+    const reviewCount = stats[0]?.reviewCount || 0;
+
+    if (
+      avgRating !== product.avgRating ||
+      reviewCount !== product.reviewCount
+    ) {
+      await Product.findByIdAndUpdate(product._id, { avgRating, reviewCount });
+      console.log(
+        `  ✏️  ${product.title}: ${product.avgRating ?? 0}★ (${product.reviewCount ?? 0}) → ${avgRating}★ (${reviewCount})`,
+      );
+      changed++;
+    }
+  }
+
+  console.log(
+    `\n✅ Done. ${changed} of ${products.length} products corrected.`,
+  );
+  await mongoose.disconnect();
+  process.exit(0);
+}
+
+recomputeAll().catch((err) => {
+  console.error("❌ Recompute failed:", err);
+  process.exit(1);
+});

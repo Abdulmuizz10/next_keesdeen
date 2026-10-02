@@ -179,6 +179,11 @@ export async function POST(request: NextRequest) {
   // Send { notifySubscribers: true, emailContent: { headline, bodyText,
   // ctaLabel?, ctaUrl?, bannerImageUrl?, discountCode? } } in the same
   // request body from your admin promotion form to trigger this.
+  //
+  // This now ENQUEUES the broadcast instead of sending inline, so it
+  // returns almost immediately regardless of subscriber list size. Real
+  // send progress shows up in the EmailEvent collection as Resend reports
+  // delivered/bounced/complained via the webhook.
   // ────────────────────────────────────────────────────────────
   if (notifySubscribers && emailContent?.headline && emailContent?.bodyText) {
     try {
@@ -201,11 +206,11 @@ export async function POST(request: NextRequest) {
           subscriberId: s._id.toString(),
         })),
         content,
-        // Simple unsubscribe link for now — no signed token yet, so anyone
-        // with a subscriber id could hit it. Fine to ship with, but worth
-        // hardening later with an HMAC-signed token.
-        unsubscribeUrlFor: (subscriberId) =>
-          `${SITE_URL}/unsubscribe?id=${subscriberId}`,
+        // Stable per-promotion id: re-creating/retrying this request can
+        // never double-blast the same promotion's subscribers, because
+        // every chunk's dedup key is derived from it. The worker signs
+        // each recipient's unsubscribe link itself.
+        campaignId: `promotion-${promotion._id.toString()}`,
       });
     } catch (broadcastError) {
       // Never let a broadcast failure block promotion creation, which already succeeded

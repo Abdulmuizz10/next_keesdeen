@@ -40,6 +40,7 @@ export function FrequentlyBoughtTogether({
     for (const product of allProducts) {
       const line: CartLine = {
         productId: product._id,
+        slug: product.slug,
         variantSku: product.variantSku,
         title: product.title,
         image: product.image,
@@ -67,7 +68,7 @@ export function FrequentlyBoughtTogether({
           {allProducts.map((product, idx) => (
             <div key={product._id} className="flex items-center gap-4">
               {idx > 0 && (
-                <div className="w-8 h-8  bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8  bg-neutral-100 flex items-center justify-center shrink-0">
                   <Plus size={16} className="text-neutral-400" />
                 </div>
               )}
@@ -112,7 +113,7 @@ export function FrequentlyBoughtTogether({
         </div>
 
         {/* Add all to cart CTA */}
-        <div className="bg-neutral-50  p-6 lg:w-64 flex-shrink-0 w-full lg:sticky lg:top-24">
+        <div className="bg-neutral-50  p-6 lg:w-64 shrink-0 w-full lg:sticky lg:top-24">
           <p className="text-sm text-neutral-500 mb-1">
             Bundle total ({allProducts.length} items)
           </p>

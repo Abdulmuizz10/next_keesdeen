@@ -365,7 +365,7 @@ export function ReportsClient({
         />
         <KpiCard
           label="AOV"
-          value={`$${d.summary.aov.toLocaleString()}`}
+          value={`£${d.summary.aov.toLocaleString()}`}
           delta={d.summary.deltaAov}
           icon={Percent}
           sparkData={d.trend}
@@ -374,7 +374,7 @@ export function ReportsClient({
         />
         <KpiCard
           label="Discounts Given"
-          value={`$${d.summary.totalDiscount.toLocaleString()}`}
+          value={`£${d.summary.totalDiscount.toLocaleString()}`}
           delta={d.summary.deltaDiscount}
           icon={Tag}
           sparkData={d.trend}
@@ -383,7 +383,7 @@ export function ReportsClient({
         />
         <KpiCard
           label="New Customers"
-          value={d.summary.newCustomers.toLocaleString()}
+          value={`£${d.summary.newCustomers.toLocaleString()}`}
           delta={d.summary.deltaNewCustomers}
           icon={Users}
           sparkData={d.trend}
@@ -392,7 +392,7 @@ export function ReportsClient({
         />
         <KpiCard
           label="Refunded"
-          value={`$${d.summary.totalRefunded.toLocaleString()}`}
+          value={`£${d.summary.totalRefunded.toLocaleString()}`}
           icon={Undo2}
           sparkData={d.trend}
           sparkKey="refunds"
@@ -514,7 +514,7 @@ export function ReportsClient({
                 tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => `$${v}`}
+                tickFormatter={(v) => `£${v}`}
                 width={55}
               />
               <Tooltip contentStyle={tipStyle} />
@@ -522,7 +522,7 @@ export function ReportsClient({
               <Area
                 type="monotone"
                 dataKey="revenue"
-                name="Gross Revenue ($)"
+                name="Gross Revenue (£)"
                 stroke={ACCENT}
                 fill={`${ACCENT}15`}
                 strokeWidth={2}
@@ -530,7 +530,7 @@ export function ReportsClient({
               />
               <Bar
                 dataKey="refunds"
-                name="Refunded ($)"
+                name="Refunded (£)"
                 fill={DANGER}
                 opacity={0.7}
                 radius={[0, 0, 0, 0]}
@@ -759,7 +759,7 @@ export function ReportsClient({
                   tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `$${v}`}
+                  tickFormatter={(v) => `£${v}`}
                 />
                 <YAxis
                   type="category"
@@ -774,7 +774,7 @@ export function ReportsClient({
                 />
                 <Tooltip
                   formatter={
-                    ((v: any) => [`$${v.toLocaleString()}`, "Revenue"]) as (
+                    ((v: any) => [`£${v.toLocaleString()}`, "Revenue"]) as (
                       value: any,
                     ) => [string, string]
                   }
@@ -855,13 +855,13 @@ export function ReportsClient({
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar
                   dataKey="revenue"
-                  name="Revenue ($)"
+                  name="Revenue (£)"
                   fill={ACCENT}
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar
                   dataKey="discount"
-                  name="Discount ($)"
+                  name="Discount (£)"
                   fill={DANGER}
                   radius={[0, 0, 0, 0]}
                 />
@@ -905,7 +905,7 @@ export function ReportsClient({
                 />
                 <Bar
                   dataKey="revenue"
-                  name="Revenue ($)"
+                  name="Revenue (£)"
                   fill="#3b82f6"
                   radius={[0, 0, 0, 0]}
                 />

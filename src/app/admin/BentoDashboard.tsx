@@ -17,7 +17,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import {
-  DollarSign,
+  PoundSterling,
   ShoppingCart,
   Package,
   Users,
@@ -118,12 +118,12 @@ const CHART_COLORS = [
 
 function fmt(cents: number) {
   if (cents >= 100000)
-    return `$${(cents / 100).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
-  return `$${(cents / 100).toFixed(0)}`;
+    return `£${(cents / 100).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+  return `£${(cents / 100).toFixed(0)}`;
 }
 
-function fmtDollars(v: number) {
-  return `$${v.toLocaleString()}`;
+function fmtPound(v: number) {
+  return `£${v.toLocaleString()}`;
 }
 
 function Trend({ value }: { value: number }) {
@@ -234,7 +234,7 @@ export function BentoDashboard({ data, userName }: Props) {
           {
             label: "Total Revenue",
             value: k ? fmt(k.totalRevenue) : "—",
-            icon: DollarSign,
+            icon: PoundSterling,
             change: k?.revenueChange,
             sub: `AOV ${k ? fmt(k.aov) : "—"}`,
           },
@@ -313,12 +313,12 @@ export function BentoDashboard({ data, userName }: Props) {
                   tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `$${v}`}
+                  tickFormatter={(v) => `£${v}`}
                   width={50}
                 />
                 <Tooltip
                   formatter={
-                    ((v: any) => [fmtDollars(v), "Revenue"]) as (
+                    ((v: any) => [fmtPound(v), "Revenue"]) as (
                       value: any,
                     ) => [string, string]
                   }
@@ -417,7 +417,7 @@ export function BentoDashboard({ data, userName }: Props) {
                   tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `$${v}`}
+                  tickFormatter={(v) => `£${v}`}
                 />
                 <YAxis
                   type="category"
@@ -432,7 +432,7 @@ export function BentoDashboard({ data, userName }: Props) {
                 />
                 <Tooltip
                   formatter={
-                    ((v: any) => [fmtDollars(v), "Revenue"]) as (
+                    ((v: any) => [fmtPound(v), "Revenue"]) as (
                       value: any,
                     ) => [string, string]
                   }
@@ -466,12 +466,12 @@ export function BentoDashboard({ data, userName }: Props) {
                   tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `$${v}`}
+                  tickFormatter={(v) => `£${v}`}
                   width={50}
                 />
                 <Tooltip
                   formatter={
-                    ((v: any) => [fmtDollars(v), "Revenue"]) as (
+                    ((v: any) => [fmtPound(v), "Revenue"]) as (
                       value: any,
                     ) => [string, string]
                   }

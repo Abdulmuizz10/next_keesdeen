@@ -157,7 +157,7 @@ export default async function OrderTrackingPage({
                 <p className="text-xs uppercase tracking-[0.25em] text-neutral-300 mb-2">
                   Order №
                 </p>
-                <h1 className="font-serif text-4xl sm:text-6xl font-semibold text-neutral-600 tabular-nums leading-none">
+                <h1 className="font-serif text-2xl sm:text-4xl font-semibold text-neutral-600 tabular-nums leading-none">
                   {order.orderNumber}
                 </h1>
               </div>
@@ -213,7 +213,7 @@ export default async function OrderTrackingPage({
             <h2 className="font-serif text-xl text-neutral-600 mb-10">
               Shipment Status
             </h2>
-            <div className="relative">
+            <div className="relative overflow-x-hidden">
               {/* Progress line */}
               <div className="absolute top-[22px] left-0 right-0 h-px bg-neutral-100" />
               <div

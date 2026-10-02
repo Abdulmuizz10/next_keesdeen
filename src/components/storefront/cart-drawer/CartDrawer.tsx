@@ -119,7 +119,7 @@ export function CartDrawer() {
                     Explore our collection
                   </p>
                   <Link
-                    href="/category/bags"
+                    href="/shop"
                     onClick={() => setCartDrawerOpen(false)}
                     className="px-8 py-3 bg-primary-400 text-white font-sans text-[11px] font-semibold uppercase tracking-[0.08em] hover:bg-primary-500 transition-colors"
                   >

@@ -28,6 +28,21 @@ interface ProductEditorProps {
   onSave: () => void;
 }
 
+interface BundleItem {
+  productId: string;
+  title: string;
+  sku: string;
+  size: string;
+  color: string;
+  colorHex: string;
+  image: string;
+}
+
+interface BundleSearchResult {
+  _id: string;
+  title: string;
+}
+
 const defaultVariant: ProductVariant = {
   sku: "",
   attributes: { size: "", color: "", colorHex: "" },
@@ -192,6 +207,183 @@ export function ProductEditor({
         : [...form.collectionIds, id],
     );
 
+  // ---- Bundle state (only for existing products) ----
+  const [bundleItems, setBundleItems] = useState<BundleItem[]>([]);
+  const [bundleTitle, setBundleTitle] = useState("");
+  const [bundleActive, setBundleActive] = useState(true);
+  const [bundleSearch, setBundleSearch] = useState("");
+  const [bundleResults, setBundleResults] = useState<BundleSearchResult[]>([]);
+  const [bundleLoading, setBundleLoading] = useState(false);
+
+  // Variant-picker state: shown after clicking a search result
+  const [pickingProduct, setPickingProduct] = useState<{
+    _id: string;
+    title: string;
+    variants: {
+      sku: string;
+      size: string;
+      color: string;
+      colorHex: string;
+      price: number;
+      stock: number;
+      image: string;
+      isActive: boolean;
+    }[];
+  } | null>(null);
+  const [pickingSku, setPickingSku] = useState("");
+  const [pickingLoading, setPickingLoading] = useState(false);
+
+  // Load existing bundle for this product
+  useEffect(() => {
+    if (!product) return;
+    let active = true;
+
+    async function loadBundle() {
+      try {
+        const res = await fetch(`/api/admin/bundles?productId=${product!._id}`);
+        const data = await res.json();
+        if (!active) return;
+        if (data && data.items) {
+          setBundleItems(
+            data.items.map((it: BundleItem) => ({
+              productId: it.productId,
+              title: it.title,
+              sku: it.sku,
+              size: it.size,
+              color: it.color,
+              colorHex: it.colorHex,
+              image: it.image,
+            })),
+          );
+          setBundleTitle(data.title || "");
+          setBundleActive(data.isActive ?? true);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    loadBundle();
+    return () => {
+      active = false;
+    };
+  }, [product]);
+
+  // Search products for bundle
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      if (bundleSearch.length < 2) {
+        setBundleResults([]);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/admin/promotions/scope-search?scope=product&q=${encodeURIComponent(bundleSearch)}`,
+          { signal: controller.signal },
+        );
+        const data = await res.json();
+        setBundleResults(
+          data
+            .filter(
+              (p: { _id: string }) =>
+                p._id !== product?._id &&
+                !bundleItems.some((b) => b.productId === p._id),
+            )
+            .map((p: { _id: string; label: string }) => ({
+              _id: p._id,
+              title: p.label,
+            })),
+        );
+      } catch {
+        setBundleResults([]);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [bundleSearch, product, bundleItems]);
+
+  const openVariantPicker = async (productId: string, title: string) => {
+    setPickingLoading(true);
+    setBundleSearch("");
+    setBundleResults([]);
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/variants`);
+      const data = await res.json();
+      const allVariants = data.variants || [];
+      const activeOnes = allVariants.filter(
+        (v: { isActive: boolean }) => v.isActive,
+      );
+      const list = activeOnes.length ? activeOnes : allVariants;
+      setPickingProduct({ _id: productId, title, variants: list });
+      setPickingSku(list[0]?.sku || "");
+    } catch {
+      setError("Could not load variants for that product");
+    }
+    setPickingLoading(false);
+  };
+
+  const confirmAddVariant = () => {
+    if (!pickingProduct || !pickingSku) return;
+    const variant = pickingProduct.variants.find((v) => v.sku === pickingSku);
+    if (!variant) return;
+    setBundleItems((prev) => [
+      ...prev.filter((b) => b.productId !== pickingProduct._id),
+      {
+        productId: pickingProduct._id,
+        title: pickingProduct.title,
+        sku: variant.sku,
+        size: variant.size,
+        color: variant.color,
+        colorHex: variant.colorHex,
+        image: variant.image,
+      },
+    ]);
+    setPickingProduct(null);
+    setPickingSku("");
+  };
+
+  // Persists bundle state to the server. Returns true on success so
+  // handleSave can decide whether to proceed or surface an error.
+  const persistBundle = async (): Promise<boolean> => {
+    if (!product) return true; // nothing to persist for a brand-new product
+    try {
+      const res = await fetch("/api/admin/bundles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product._id,
+          items: bundleItems.map((b) => ({
+            productId: b.productId,
+            sku: b.sku,
+          })),
+          title: bundleTitle || undefined,
+          isActive: bundleActive,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to save bundle");
+        return false;
+      }
+      return true;
+    } catch {
+      setError("Failed to save bundle");
+      return false;
+    }
+  };
+
+  // Standalone "Save Bundle" button inside the tab, for saving bundle
+  // changes without closing the whole editor.
+  const saveBundle = async () => {
+    setBundleLoading(true);
+    await persistBundle();
+    setBundleLoading(false);
+  };
+
   const handleSave = async () => {
     setError(null);
     if (!form.title.trim()) {
@@ -262,6 +454,18 @@ export function ProductEditor({
         throw new Error(data.error || "Save failed");
       }
 
+      // Persist bundle changes alongside product changes. Only applies to
+      // existing products — the Bundle tab isn't shown for new ones.
+      if (!isNew) {
+        const bundleOk = await persistBundle();
+        if (!bundleOk) {
+          // Product saved fine, but bundle failed — surface it and stop
+          // short of closing the editor so nothing looks silently lost.
+          setSaving(false);
+          return;
+        }
+      }
+
       // Revalidate storefront pages
       await fetch("/api/revalidate", {
         method: "POST",
@@ -275,102 +479,6 @@ export function ProductEditor({
     } finally {
       setSaving(false);
     }
-  };
-
-  // ---- Bundle state (only for existing products) ----
-  const [bundleItems, setBundleItems] = useState<
-    { _id: string; title: string; image: string }[]
-  >([]);
-  const [bundleTitle, setBundleTitle] = useState("");
-  const [bundleActive, setBundleActive] = useState(true);
-  const [bundleSearch, setBundleSearch] = useState("");
-  const [bundleResults, setBundleResults] = useState<
-    { _id: string; title: string; image: string }[]
-  >([]);
-  const [bundleLoading, setBundleLoading] = useState(false);
-
-  // Load existing bundle for this product
-  useEffect(() => {
-    if (!product) return;
-    let active = true;
-
-    async function loadBundle() {
-      try {
-        const res = await fetch(`/api/admin/bundles?productId=${product!._id}`);
-        const data = await res.json();
-        if (!active) return;
-        if (data && data.items) {
-          setBundleItems(data.items);
-          setBundleTitle(data.title || "");
-          setBundleActive(data.isActive ?? true);
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    loadBundle();
-    return () => {
-      active = false;
-    };
-  }, [product]);
-
-  // Search products for bundle
-  useEffect(() => {
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      if (bundleSearch.length < 2) {
-        setBundleResults([]);
-        return;
-      }
-      try {
-        const res = await fetch(
-          `/api/admin/promotions/scope-search?scope=product&q=${encodeURIComponent(bundleSearch)}`,
-          { signal: controller.signal },
-        );
-        const data = await res.json();
-        setBundleResults(
-          data
-            .filter(
-              (p: { _id: string }) =>
-                p._id !== product?._id &&
-                !bundleItems.some((b) => b._id === p._id),
-            )
-            .map((p: { _id: string; label: string }) => ({
-              _id: p._id,
-              title: p.label,
-              image: "",
-            })),
-        );
-      } catch {
-        setBundleResults([]);
-      }
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [bundleSearch, product, bundleItems]);
-
-  const saveBundle = async () => {
-    if (!product) return;
-    setBundleLoading(true);
-    try {
-      await fetch("/api/admin/bundles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: product._id,
-          itemProductIds: bundleItems.map((b) => b._id),
-          title: bundleTitle || undefined,
-          isActive: bundleActive,
-        }),
-      });
-    } catch {
-      /* ignore */
-    }
-    setBundleLoading(false);
   };
 
   const tabs = [
@@ -976,22 +1084,50 @@ export function ProductEditor({
                   </label>
                   {bundleItems.map((item) => (
                     <div
-                      key={item._id}
+                      key={item.sku}
                       className="flex items-center justify-between p-2 border border-[hsl(var(--border))]"
                     >
-                      <span className="text-sm text-[hsl(var(--foreground))] truncate">
-                        {item.title}
-                      </span>
-                      <button
-                        onClick={() =>
-                          setBundleItems((prev) =>
-                            prev.filter((b) => b._id !== item._id),
-                          )
-                        }
-                        className="text-red-500 hover:text-red-600 p-1"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center gap-3 min-w-0">
+                        {item.image && (
+                          <Image
+                            src={item.image}
+                            alt=""
+                            width={36}
+                            height={36}
+                            className="w-9 h-9 object-cover shrink-0"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <span className="text-sm text-[hsl(var(--foreground))] truncate block">
+                            {item.title}
+                          </span>
+                          <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                            {[item.size, item.color]
+                              .filter(Boolean)
+                              .join(" / ") || "Default"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() =>
+                            openVariantPicker(item.productId, item.title)
+                          }
+                          className="text-xs text-[hsl(var(--primary))] hover:underline px-2"
+                        >
+                          Change
+                        </button>
+                        <button
+                          onClick={() =>
+                            setBundleItems((prev) =>
+                              prev.filter((b) => b.sku !== item.sku),
+                            )
+                          }
+                          className="text-red-500 hover:text-red-600 p-1"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1019,12 +1155,9 @@ export function ProductEditor({
                     {bundleResults.map((r) => (
                       <button
                         key={r._id}
-                        onClick={() => {
-                          setBundleItems((prev) => [...prev, r]);
-                          setBundleSearch("");
-                          setBundleResults([]);
-                        }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-[hsl(var(--accent))]"
+                        onClick={() => openVariantPicker(r._id, r.title)}
+                        disabled={pickingLoading}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-[hsl(var(--accent))] disabled:opacity-50"
                       >
                         <Plus size={12} /> {r.title}
                       </button>
@@ -1032,6 +1165,60 @@ export function ProductEditor({
                   </div>
                 )}
               </div>
+
+              {pickingProduct && (
+                <div className="border border-[hsl(var(--border))] p-4 bg-[hsl(var(--muted))]">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold">
+                      Choose a variant — {pickingProduct.title}
+                    </p>
+                    <button onClick={() => setPickingProduct(null)}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                  {pickingProduct.variants.length === 0 ? (
+                    <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                      This product has no active variants.
+                    </p>
+                  ) : (
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {pickingProduct.variants.map((v) => (
+                        <label
+                          key={v.sku}
+                          className="flex items-center gap-3 px-2 py-1.5 hover:bg-[hsl(var(--accent))] cursor-pointer"
+                        >
+                          <input
+                            type="radio"
+                            name="picking-variant"
+                            checked={pickingSku === v.sku}
+                            onChange={() => setPickingSku(v.sku)}
+                          />
+                          {v.colorHex && (
+                            <span
+                              className="w-4 h-4 rounded-full border border-[hsl(var(--border))] shrink-0"
+                              style={{ backgroundColor: v.colorHex }}
+                            />
+                          )}
+                          <span className="text-sm">
+                            {[v.size, v.color].filter(Boolean).join(" / ") ||
+                              v.sku}
+                          </span>
+                          <span className="text-xs text-[hsl(var(--muted-foreground))] ml-auto">
+                            {v.stock} in stock
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={confirmAddVariant}
+                    disabled={!pickingSku}
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 bg-[hsl(var(--primary))] text-white text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Plus size={14} /> Add to Bundle
+                  </button>
+                </div>
+              )}
 
               <button
                 onClick={saveBundle}
@@ -1041,8 +1228,13 @@ export function ProductEditor({
                 {bundleLoading && (
                   <Loader2 size={14} className="animate-spin" />
                 )}
-                Save Bundle
+                Save Bundle Now
               </button>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                Bundle changes are also saved automatically when you click
+                &ldquo;Save Changes&rdquo; below — use this button only if you
+                want to save the bundle without closing the editor.
+              </p>
             </div>
           )}
         </div>

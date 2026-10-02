@@ -195,28 +195,39 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }[] = [];
   let bundleTitle = "";
 
-  if (bundle && bundle.itemProductIds.length > 0) {
+  if (bundle && bundle.items && bundle.items.length > 0) {
     bundleTitle = bundle.title || "";
+    const bundleProductIds = bundle.items.map((i) => i.productId);
     const bundleProducts = await Product.find({
-      _id: { $in: bundle.itemProductIds },
+      _id: { $in: bundleProductIds },
       status: "published",
     }).lean();
     const bundlePricing = await getBatchPricing(bundleProducts as never[]);
+    const bundleProductMap = new Map(
+      bundleProducts.map((bp) => [bp._id.toString(), bp]),
+    );
 
-    serializedBundleItems = bundleProducts.map((bp) => {
-      const bPricing = bundlePricing.get(bp._id.toString());
-      const bVariant = bp.variants.find((v) => v.isActive) || bp.variants[0];
-      return {
-        _id: bp._id.toString(),
-        slug: bp.slug,
-        title: bp.title,
-        image: bp.images[0] || "",
-        effectivePrice: bPricing?.effectivePrice || bp.basePrice,
-        originalPrice: bPricing?.originalPrice || bp.basePrice,
-        variantSku: bVariant?.sku || "",
-        stock: bVariant?.stock || 0,
-      };
-    });
+    serializedBundleItems = bundle.items
+      .map((item) => {
+        const bp = bundleProductMap.get(item.productId.toString());
+        if (!bp) return null;
+        const bVariant = bp.variants.find((v) => v.sku === item.sku);
+        if (!bVariant) return null;
+        const bPricing = bundlePricing.get(bp._id.toString());
+        return {
+          _id: bp._id.toString(),
+          slug: bp.slug,
+          title: bp.title,
+          image: bVariant.images?.[0] || bp.images[0] || "",
+          effectivePrice:
+            bPricing?.effectivePrice || bVariant.price || bp.basePrice,
+          originalPrice:
+            bPricing?.originalPrice || bVariant.price || bp.basePrice,
+          variantSku: bVariant.sku,
+          stock: bVariant.stock,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
   }
 
   // Anchor product card for the bundle
@@ -272,7 +283,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   ]);
 
   return (
-    <main className="min-h-screen bg-white mx-auto max-w-[1400px] px-4 py-8 lg:mt-20">
+    <main className="min-h-screen bg-white mx-auto max-w-[1400px] px-4 py-14 lg:mt-20">
       {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"
@@ -284,9 +295,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
       />
 
       {/* Breadcrumbs */}
-      <nav>
+      <nav className="mt-10 lg:mt-0">
         <div className="py-4">
-          <ol className="flex items-center gap-2 text-sm">
+          <ol className="flex items-center gap-2 text-[10px] sm:text-sm">
             <li>
               <Link
                 href="/"
@@ -317,7 +328,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </nav>
 
       {/* Product Content */}
-      <div className="">
+      <div className="mt-4">
         <div className="lg:grid lg:grid-cols-2 lg:gap-12">
           {/* Left: Image Gallery */}
           <ProductGallery

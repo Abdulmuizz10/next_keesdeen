@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { requireRouteAccess } from "@/lib/auth-helpers";
 import Subscriber from "@/lib/models/Subscriber";
@@ -6,9 +7,6 @@ import {
   sendPromotionBroadcast,
   type PromotionEmailContent,
 } from "@/lib/email";
-import { generateUnsubscribeToken } from "@/lib/unsubscribe";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://keesdeen.com";
 
 export async function POST(req: NextRequest) {
   // Same gate as PATCH/bulk in /api/admin/subscribers: "read" is the only
@@ -69,7 +67,7 @@ export async function POST(req: NextRequest) {
     .lean();
 
   if (activeSubscribers.length === 0) {
-    return NextResponse.json({ sent: 0, failed: 0, total: 0 });
+    return NextResponse.json({ sent: 0, failed: 0, skipped: 0, total: 0 });
   }
 
   const content: PromotionEmailContent = {
@@ -81,18 +79,33 @@ export async function POST(req: NextRequest) {
     bannerImageUrl: bannerImageUrl || undefined,
   };
 
+  // Optional double-click protection: if your admin form generates one id
+  // (e.g. crypto.randomUUID()) when it first opens and sends it as
+  // body.campaignId, a second submit with that same id will not re-send.
+  // Without it, every request is treated as a brand new campaign.
+  const campaignId =
+    typeof body.campaignId === "string" && body.campaignId.trim()
+      ? `manual-${body.campaignId.trim()}`
+      : `manual-${randomUUID()}`;
+
   const result = await sendPromotionBroadcast({
     recipients: activeSubscribers.map((s) => ({
       email: s.email as string,
       subscriberId: (s._id as { toString(): string }).toString(),
     })),
     content,
-    unsubscribeUrlFor: (subscriberId) =>
-      `${SITE_URL}/unsubscribe?id=${subscriberId}&token=${generateUnsubscribeToken(subscriberId)}`,
+    campaignId,
   });
 
-  // sent/failed/skipped from sendPromotionBroadcast + total active
-  // subscribers considered, so the UI can tell "all delivered" apart
-  // from "some/all silently failed" instead of treating any 200 as success.
-  return NextResponse.json({ ...result, total: activeSubscribers.length });
+  // Keeping the same response shape your admin UI already expects.
+  // NOTE: "sent" now means "queued", not "delivered" -- this call returns
+  // as soon as every chunk is accepted by the queue, not once Resend has
+  // actually sent each email. Real delivery status lands in the
+  // EmailEvent collection via the Resend webhook.
+  return NextResponse.json({
+    sent: result.queued,
+    failed: result.failedToQueue,
+    skipped: result.skipped,
+    total: activeSubscribers.length,
+  });
 }

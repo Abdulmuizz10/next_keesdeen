@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 const TRUST_POINTS = [
-  "Free shipping on orders over $75",
+  "Free shipping on orders over £150",
   "30-day hassle-free returns",
   "Engineered from performance-grade fabric",
 ];

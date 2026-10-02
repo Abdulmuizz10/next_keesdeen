@@ -1,11 +1,6 @@
 import "server-only";
-import { Resend } from "resend";
+import { enqueue, newJobKey } from "./email-queue";
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
-
-const FROM_EMAIL = process.env.FROM_EMAIL || "hello@keesdeen.com";
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "hello@keesdeen.com";
 const ADMIN_NOTIFY_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || SUPPORT_EMAIL;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://keesdeen.com";
@@ -43,10 +38,6 @@ const THEME = {
 
 /* ============================================================================
    SHARED PRIMITIVES
-
-   Kept deliberately small. Every email type is free to compose these
-   differently — an order email, a security email, and a promotion should not
-   share one rigid "card" shape. See the audit brief, section 18.
 ============================================================================ */
 
 /** Format an integer cents amount as a localized currency string. */
@@ -66,37 +57,18 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/**
- * Escapes a URL before it's interpolated into an href/src attribute. URLs
- * that ultimately end up in an <a> or <img> tag should always go through
- * this — including internally-generated ones — so a stray quote or angle
- * bracket in a token/query string can't break out of the attribute.
- */
 function escapeAttr(url: string): string {
   return escapeHtml(url);
 }
 
-/**
- * Small uppercase metadata tag. Reserved for a handful of places where a
- * label genuinely helps scanning (a tracking number, a shipping address) —
- * not applied to every section header. Overusing this is one of the more
- * obvious "AI email template" tells.
- */
 function label(text: string, color: string = THEME.color.neutral300): string {
   return `<p style="margin:0 0 6px;font-family:${THEME.font.sans};font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${color};">${text}</p>`;
 }
 
-/** A plain hairline rule. The primary tool for separating sections — used instead of boxes. */
 function rule(color: string = THEME.color.neutral100): string {
   return `<tr><td style="border-top:1px solid ${color};font-size:0;line-height:0;">&nbsp;</td></tr>`;
 }
 
-/**
- * Sharp-cornered CTA. Sentence case rather than all-caps — all-caps, wide
- * letter-spaced buttons are one of the most generic "SaaS transactional
- * email" signals there is, and this system otherwise leans on a serif/sans
- * contrast for character instead of on decoration.
- */
 function ctaButton(
   copy: string,
   url: string,
@@ -115,7 +87,6 @@ function ctaButton(
   </table>`;
 }
 
-/** Thin key/value row used in order, refund, and account summaries. */
 function summaryRow(
   label: string,
   value: string,
@@ -135,14 +106,6 @@ function summaryRow(
 
 type ShellVariant = "customer" | "promotional" | "internal";
 
-/**
- * The shared shell. Deliberately thin: a quiet letterhead, the content slot,
- * a quiet footer. No colored status rail, no perforated "tag stub" divider —
- * both read as invented design-system decoration rather than anything
- * Keesdeen's brand actually does elsewhere (see audit brief, sections 4.1
- * and 4.3). If an SVG/PNG wordmark asset exists, swap it in at the header
- * comment below — it will read as more "real" than any text treatment.
- */
 function renderShell(opts: {
   preheader: string;
   bodyHtml: string;
@@ -153,11 +116,10 @@ function renderShell(opts: {
 
   const header =
     variant === "internal"
-      ? "" // internal/admin emails skip the letterhead entirely — see brief section 17
+      ? ""
       : `
           <tr>
             <td style="padding:36px 40px 28px;">
-              <!-- Wordmark: swap for a real logo asset (SVG/PNG) if one exists for email use -->
               <p style="margin:0;font-family:${THEME.font.sans};font-size:13px;font-weight:700;letter-spacing:0.14em;color:${THEME.color.neutral600};">
                 ${COMPANY_NAME.toUpperCase()}
               </p>
@@ -214,40 +176,37 @@ function renderShell(opts: {
 </html>`;
 }
 
-/** Central send wrapper: no-ops safely when Resend isn't configured, logs failures consistently. */
+/**
+ * Central send wrapper. Instead of calling Resend directly, this now
+ * ENQUEUES the email and returns once it's been accepted into the queue
+ * (or sent inline in local dev without QStash configured — see email-queue.ts).
+ *
+ * `true` means "queued", not "delivered". Real delivery status lands in the
+ * EmailEvent collection via the Resend webhook.
+ *
+ * dedupeKey: pass a stable key (e.g. `order-confirmed:${orderNumber}`) for
+ * any email that must never be sent twice for the same event — important
+ * because webhooks (Square, etc.) can redeliver the same event.
+ */
 async function dispatch(params: {
   to: string;
   subject: string;
   html: string;
   replyTo?: string;
   context: string;
+  dedupeKey?: string;
 }): Promise<boolean> {
-  if (!resend) {
-    console.warn(
-      `[email] RESEND_API_KEY not set — skipping "${params.context}"`,
-    );
-    return false;
-  }
-  try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
+  return enqueue({
+    kind: "single",
+    key: params.dedupeKey ?? newJobKey(),
+    context: params.context,
+    email: {
       to: params.to,
       subject: params.subject,
       html: params.html,
       replyTo: params.replyTo,
-    });
-    if (error) {
-      console.error(`[email] Failed to send "${params.context}":`, error);
-      return false;
-    }
-    // Keep the Resend message id in logs (not exposed to the customer) so a
-    // support ticket ("I never got my confirmation") can be traced to a send.
-    console.log(`[email] sent "${params.context}" to ${params.to}`, data?.id);
-    return true;
-  } catch (err) {
-    console.error(`[email] Error sending "${params.context}":`, err);
-    return false;
-  }
+    },
+  });
 }
 
 /* ============================================================================
@@ -310,7 +269,6 @@ export async function sendPasswordResetEmail(data: {
   });
 }
 
-/** Confirms a password was changed, so the customer notices unauthorized resets. */
 export async function sendPasswordChangedEmail(data: {
   email: string;
   name: string;
@@ -458,6 +416,7 @@ export async function sendOrderConfirmationEmail(data: {
       bodyHtml: body,
     }),
     context: "order confirmation email",
+    dedupeKey: `order-confirmed:${data.orderNumber}`,
   });
 }
 
@@ -502,6 +461,7 @@ export async function sendShippingConfirmationEmail(data: {
       bodyHtml: body,
     }),
     context: "shipping confirmation email",
+    dedupeKey: `order-shipped:${data.orderNumber}`,
   });
 }
 
@@ -530,6 +490,7 @@ export async function sendDeliveredEmail(data: {
     subject: `Delivered — ${data.orderNumber}`,
     html: renderShell({ preheader: "Your order has arrived.", bodyHtml: body }),
     context: "delivery confirmation email",
+    dedupeKey: `order-delivered:${data.orderNumber}`,
   });
 }
 
@@ -604,6 +565,7 @@ export async function sendRefundConfirmationEmail(data: {
       bodyHtml: body,
     }),
     context: "refund confirmation email",
+    dedupeKey: `refund:${data.refundNumber}`,
   });
 }
 
@@ -645,11 +607,7 @@ export async function sendSubscriberWelcomeEmail(data: {
 }
 
 /* ============================================================================
-   5. PROMOTIONS — one-off broadcast to active subscribers
-
-   Promotions are the one email type allowed real visual range (brief,
-   section 15) — but they should look like an editorial mailing from a
-   fashion brand, not the transactional shell with a banner dropped in.
+   5. PROMOTIONS — broadcast to active subscribers
 ============================================================================ */
 
 export interface PromotionEmailContent {
@@ -661,7 +619,9 @@ export interface PromotionEmailContent {
   discountCode?: string;
 }
 
-function renderPromotionEmail(
+// Exported: the queue worker renders each recipient's copy itself, since the
+// per-recipient unsubscribe link can't be pre-built before a job is queued.
+export function renderPromotionEmail(
   content: PromotionEmailContent,
   unsubscribeUrl: string,
 ): string {
@@ -752,26 +712,20 @@ export async function sendPromotionEmail(data: {
 }
 
 /**
- * Broadcast a promotion to many subscribers at once using Resend's batch API
- * (up to 100 per batch call). Pass unsubscribeUrlFor to generate a per-recipient
- * unsubscribe link (e.g. signed token per subscriber id).
+ * Broadcast a promotion to many subscribers. Chunks the list and ENQUEUES
+ * each chunk as its own job — this function returns almost instantly even
+ * for a list of tens of thousands, instead of blocking on Resend.
+ *
+ * campaignId: a stable id for this specific campaign (e.g. the Promotion's
+ * Mongo _id, or your own generated id). Re-running a broadcast with the
+ * SAME campaignId will not double-send, because each chunk's dedup key is
+ * derived from it.
  */
 export async function sendPromotionBroadcast(data: {
   recipients: { email: string; subscriberId: string }[];
   content: PromotionEmailContent;
-  unsubscribeUrlFor: (subscriberId: string) => string;
-}): Promise<{ sent: number; failed: number; skipped: number }> {
-  if (!resend) {
-    console.warn(
-      "[email] RESEND_API_KEY not set — skipping promotion broadcast",
-    );
-    return { sent: 0, failed: data.recipients.length, skipped: 0 };
-  }
-
-  // Resend rejects sends to these outright — they're reserved for docs/
-  // examples and are never deliverable. Filtering them here means one
-  // stray test subscriber can never again take the rest of the batch
-  // down with it.
+  campaignId: string;
+}): Promise<{ queued: number; skipped: number; failedToQueue: number }> {
   const NON_DELIVERABLE_DOMAINS = new Set([
     "example.com",
     "example.org",
@@ -787,71 +741,39 @@ export async function sendPromotionBroadcast(data: {
   const skipped = data.recipients.length - sendable.length;
   if (skipped > 0) {
     console.warn(
-      `[email] Skipping ${skipped} subscriber(s) with non-deliverable test-domain emails in promotion broadcast`,
+      `[email] Skipping ${skipped} recipient(s) with non-deliverable test-domain emails`,
     );
   }
 
-  const BATCH_SIZE = 100;
-  let sent = 0;
-  let failed = 0;
-
-  for (let i = 0; i < sendable.length; i += BATCH_SIZE) {
-    const chunk = sendable.slice(i, i + BATCH_SIZE);
-    try {
-      const { error } = await resend.batch.send(
-        chunk.map((r) => ({
-          from: FROM_EMAIL,
-          to: r.email,
-          subject: data.content.headline,
-          html: renderPromotionEmail(
-            data.content,
-            data.unsubscribeUrlFor(r.subscriberId),
-          ),
-        })),
-      );
-
-      if (!error) {
-        sent += chunk.length;
-        continue;
-      }
-
-      // The whole chunk was rejected together — fall back to sending each
-      // email individually so one bad recipient doesn't cost everyone
-      // else in it their delivery.
-      console.error(
-        "[email] Promotion batch failed, retrying chunk individually:",
-        error,
-      );
-      const results = await Promise.allSettled(
-        chunk.map((r) =>
-          resend!.emails.send({
-            from: FROM_EMAIL,
-            to: r.email,
-            subject: data.content.headline,
-            html: renderPromotionEmail(
-              data.content,
-              data.unsubscribeUrlFor(r.subscriberId),
-            ),
-          }),
-        ),
-      );
-      for (const result of results) {
-        if (result.status === "fulfilled" && !result.value.error) {
-          sent++;
-        } else {
-          failed++;
-          const reason =
-            result.status === "fulfilled" ? result.value.error : result.reason;
-          console.error("[email] Individual promotion send failed:", reason);
-        }
-      }
-    } catch (err) {
-      console.error("[email] Promotion batch error:", err);
-      failed += chunk.length;
-    }
+  const CHUNK = 50;
+  const chunks: { email: string; subscriberId: string }[][] = [];
+  for (let i = 0; i < sendable.length; i += CHUNK) {
+    chunks.push(sendable.slice(i, i + CHUNK));
   }
 
-  return { sent, failed, skipped };
+  let queued = 0;
+  let failedToQueue = 0;
+  const PARALLEL = 10; // publish several chunks at once so large lists don't time out the request
+
+  for (let i = 0; i < chunks.length; i += PARALLEL) {
+    const group = chunks.slice(i, i + PARALLEL);
+    const results = await Promise.all(
+      group.map((chunk, j) =>
+        enqueue({
+          kind: "promotion_chunk",
+          key: `promo:${data.campaignId}:${i + j}`,
+          content: data.content,
+          recipients: chunk,
+        }),
+      ),
+    );
+    results.forEach((ok: any, j: any) => {
+      if (ok) queued += group[j].length;
+      else failedToQueue += group[j].length;
+    });
+  }
+
+  return { queued, skipped, failedToQueue };
 }
 
 /* ============================================================================
